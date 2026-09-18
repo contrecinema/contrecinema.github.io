@@ -1,0 +1,94 @@
+backend:
+  name: turbo-github
+  turbo_site_id: YOUR_TURBO_SITE_ID
+  branch: main
+
+media_folder: "uploads"
+public_folder: "/-contre-cinema/uploads"
+locale: "ar"
+
+collections:
+  - name: "content"
+    label: "محتوى الموقع"
+    files:
+      - label: "إعدادات الموقع"
+        name: "site"
+        file: "data/site.json"
+        format: "json"
+        fields:
+          - label: "الموقع"
+            name: "site"
+            widget: "object"
+            fields:
+              - {label: "اسم المجلة", name: "title", widget: "string"}
+              - {label: "الاسم باللاتينية", name: "latin", widget: "string"}
+              - {label: "الوصف القصير", name: "tagline", widget: "string"}
+              - {label: "المقدمة", name: "intro", widget: "text"}
+              - {label: "عنوان من نحن", name: "aboutTitle", widget: "string"}
+              - {label: "نص من نحن", name: "about", widget: "markdown"}
+              - {label: "البريد", name: "email", widget: "string"}
+              - {label: "العدد الحالي", name: "currentIssue", widget: "number", value_type: "int"}
+              - {label: "تاريخ العدد الحالي", name: "currentDate", widget: "string"}
+          - label: "الأقسام"
+            name: "sections"
+            widget: "list"
+            summary: "{{fields.title}}"
+            fields:
+              - {label: "اسم القسم", name: "title", widget: "string"}
+              - {label: "الوصف", name: "description", widget: "text"}
+          - label: "الأعداد"
+            name: "issues"
+            widget: "list"
+            summary: "العدد {{fields.number}} — {{fields.theme}}"
+            fields:
+              - {label: "رقم العدد", name: "number", widget: "number", value_type: "int"}
+              - {label: "التاريخ", name: "date", widget: "string"}
+              - {label: "موضوع العدد", name: "theme", widget: "string"}
+              - {label: "عدد الصفحات", name: "pages", widget: "number", value_type: "int", required: false}
+              - {label: "غلاف العدد", name: "cover", widget: "image", required: false}
+              - label: "ملف PDF"
+                name: "pdf"
+                widget: "file"
+                required: false
+                media_folder: "uploads/issues"
+                choose_url: false
+                hint: "ارفع ملف PDF للعدد هنا."
+          - label: "المقالات"
+            name: "articles"
+            widget: "list"
+            summary: "{{fields.section}} — {{fields.title}}"
+            fields:
+              - {label: "العنوان", name: "title", widget: "string"}
+              - {label: "القسم", name: "section", widget: "string"}
+              - {label: "رقم العدد", name: "issue", widget: "number", value_type: "int", required: false}
+              - {label: "المختصر", name: "excerpt", widget: "text"}
+              - {label: "صورة المقال", name: "image", widget: "image", required: false}
+              - {label: "النص", name: "body", widget: "markdown", required: false}
+          - label: "هيئة التحرير"
+            name: "team"
+            widget: "list"
+            summary: "{{fields.name}} — {{fields.role}}"
+            fields:
+              - {label: "الاسم", name: "name", widget: "string"}
+              - {label: "الصفة", name: "role", widget: "string"}
+              - {label: "التعريف", name: "bio", widget: "text"}
+              - {label: "الصورة", name: "photo", widget: "image", required: false}
+          - label: "الكتاب والمحررون"
+            name: "writers"
+            widget: "list"
+            field: {label: "الاسم", name: "name", widget: "string"}
+          - label: "وسائط"
+            name: "media"
+            widget: "list"
+            summary: "{{fields.title}}"
+            fields:
+              - {label: "العنوان", name: "title", widget: "string"}
+              - {label: "الوصف", name: "description", widget: "text"}
+              - {label: "الرابط", name: "url", widget: "string", required: false}
+          - label: "سياسة الموقع"
+            name: "policy"
+            widget: "list"
+            summary: "{{fields.title}}"
+            fields:
+              - {label: "العنوان", name: "title", widget: "string"}
+              - {label: "النص", name: "text", widget: "text"}
