@@ -1,196 +1,599 @@
-Const SUPABASE_URL='https://qclqyqjxsnnhlnlhjybo.supabase.co';
-const SUPABASE_KEY='sb_publishable_poEM-eY7byTT2UBEwZMLmQ_GGUWLnfm';
+/* =========================================================
+   CONTRE CINÉMA
+   ADMIN.JS
+   ========================================================= */
 
-const db=supabase.createClient(
+
+/* =========================================================
+   SUPABASE
+   ========================================================= */
+
+const SUPABASE_URL =
+  'https://qclqyqjxsnnhlnlhjybo.supabase.co';
+
+const SUPABASE_KEY =
+  'sb_publishable_poEM-eY7byTT2UBEwZMLmQ_GGUWLnfm';
+
+const db = supabase.createClient(
   SUPABASE_URL,
-  SUPABASE_KEY
+  SUPABASE_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
 );
 
-let D={
-  issues:[],
-  articles:[],
-  sections:[],
-  team:[],
-  settings:null
+
+/* =========================================================
+   DATA
+   ========================================================= */
+
+let D = {
+  issues: [],
+  articles: [],
+  sections: [],
+  team: [],
+  settings: null
 };
 
-const $=id=>document.getElementById(id);
 
-function esc(v){
-  return String(v??'')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+const $ = id => document.getElementById(id);
+
+
+function esc(value) {
+
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
 }
 
-function msgError(e){
-  return e?.message ||
-         e?.error_description ||
-         'حدث خطأ غير معروف';
+
+function msgError(error) {
+
+  return (
+    error?.message ||
+    error?.error_description ||
+    'حدث خطأ غير معروف.'
+  );
+
 }
 
 
-/* =========================
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
+
+let login;
+let panel;
+let loginBtn;
+let logout;
+let emailInput;
+let passwordInput;
+let msg;
+let workspace;
+let stats;
+
+
+/* =========================================================
+   GET ELEMENTS
+   ========================================================= */
+
+function getElements() {
+
+  login =
+    $('login');
+
+  panel =
+    $('panel');
+
+  loginBtn =
+    $('loginBtn');
+
+  logout =
+    $('logout');
+
+  emailInput =
+    $('email');
+
+  passwordInput =
+    $('password');
+
+  msg =
+    $('msg');
+
+  workspace =
+    $('workspace');
+
+  stats =
+    $('stats');
+
+}
+
+
+/* =========================================================
    ADMIN CHECK
-========================= */
+   ========================================================= */
 
-async function isAdmin(){
+async function isAdmin() {
 
-  const {
-    data:{user},
-    error
-  }=await db.auth.getUser();
-
-  if(error || !user){
-    return false;
-  }
-
-  const {
-    data,
-    error:adminError
-  }=await db
-    .from('admins')
-    .select('user_id')
-    .eq('user_id',user.id)
-    .maybeSingle();
-
-  if(adminError){
-    console.error(adminError);
-    return false;
-  }
-
-  return !!data;
-}
-
-
-/* =========================
-   BOOT
-========================= */
-
-async function boot(){
-
-  try{
+  try {
 
     const {
-      data:{session}
-    }=await db.auth.getSession();
-
-    if(session && await isAdmin()){
-
-      if(login) login.hidden=true;
-      if(panel) panel.hidden=false;
-
-      await load();
-      show('dashboard');
-
-    }else{
-
-      if(login) login.hidden=false;
-      if(panel) panel.hidden=true;
-
-    }
-
-  }catch(e){
-
-    console.error(e);
-
-    if(login) login.hidden=false;
-    if(panel) panel.hidden=true;
-
-    if(msg){
-      msg.textContent=msgError(e);
-    }
-
-  }
-}
-
-
-/* =========================
-   LOGIN
-========================= */
-
-if(loginBtn){
-
-  loginBtn.onclick=async()=>{
-
-    msg.textContent='جارٍ تسجيل الدخول...';
-
-    const {
+      data: { user },
       error
-    }=await db.auth.signInWithPassword({
+    } = await db.auth.getUser();
 
-      email:email.value.trim(),
+    if (error) {
 
-      password:password.value
+      console.error(
+        'GET USER ERROR:',
+        error
+      );
+
+      return false;
+
+    }
+
+    if (!user) {
+
+      return false;
+
+    }
+
+
+    const {
+      data,
+      error: adminError
+    } = await db
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+
+    if (adminError) {
+
+      console.error(
+        'ADMIN CHECK ERROR:',
+        adminError
+      );
+
+      return false;
+
+    }
+
+
+    return !!data;
+
+  } catch (error) {
+
+    console.error(
+      'ADMIN CHECK EXCEPTION:',
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
+
+/* =========================================================
+   LOGIN / PANEL VISIBILITY
+   ========================================================= */
+
+function showLogin() {
+
+  if (login) {
+
+    login.hidden = false;
+
+  }
+
+  if (panel) {
+
+    panel.hidden = true;
+
+  }
+
+}
+
+
+function showPanel() {
+
+  if (login) {
+
+    login.hidden = true;
+
+  }
+
+  if (panel) {
+
+    panel.hidden = false;
+
+  }
+
+}
+
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+
+async function boot() {
+
+  try {
+
+    if (msg) {
+
+      msg.textContent =
+        'جارٍ التحقق من الجلسة...';
+
+    }
+
+
+    const {
+      data: { session },
+      error
+    } = await db.auth.getSession();
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    if (!session) {
+
+      showLogin();
+
+      if (msg) {
+
+        msg.textContent = '';
+
+      }
+
+      return;
+
+    }
+
+
+    const admin =
+      await isAdmin();
+
+
+    if (!admin) {
+
+      await db.auth.signOut();
+
+      showLogin();
+
+      if (msg) {
+
+        msg.textContent =
+          'هذا الحساب لا يملك صلاحية إدارة الموقع.';
+
+      }
+
+      return;
+
+    }
+
+
+    showPanel();
+
+
+    await load();
+
+
+    show('dashboard');
+
+
+    if (msg) {
+
+      msg.textContent = '';
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      'BOOT ERROR:',
+      error
+    );
+
+
+    showLogin();
+
+
+    if (msg) {
+
+      msg.textContent =
+        msgError(error);
+
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+async function loginUser() {
+
+  const email =
+    emailInput?.value
+      ?.trim();
+
+
+  const password =
+    passwordInput?.value || '';
+
+
+  if (!email) {
+
+    if (msg) {
+
+      msg.textContent =
+        'أدخل البريد الإلكتروني.';
+
+    }
+
+    return;
+
+  }
+
+
+  if (!password) {
+
+    if (msg) {
+
+      msg.textContent =
+        'أدخل كلمة المرور.';
+
+    }
+
+    return;
+
+  }
+
+
+  if (loginBtn) {
+
+    loginBtn.disabled = true;
+
+    loginBtn.textContent =
+      'جارٍ الدخول...';
+
+  }
+
+
+  if (msg) {
+
+    msg.textContent =
+      'جارٍ تسجيل الدخول...';
+
+  }
+
+
+  try {
+
+    const {
+      data,
+      error
+    } = await db.auth.signInWithPassword({
+
+      email: email,
+
+      password: password
 
     });
 
-    if(error){
 
-      msg.textContent=msgError(error);
+    if (error) {
 
-      return;
+      throw error;
+
     }
 
-    await boot();
 
-  };
+    if (!data?.session) {
+
+      throw new Error(
+        'تم تسجيل الدخول لكن لم يتم إنشاء جلسة.'
+      );
+
+    }
+
+
+    const admin =
+      await isAdmin();
+
+
+    if (!admin) {
+
+      await db.auth.signOut();
+
+      throw new Error(
+        'تم تسجيل الدخول، لكن هذا الحساب غير موجود في جدول admins.'
+      );
+
+    }
+
+
+    showPanel();
+
+
+    await load();
+
+
+    show('dashboard');
+
+
+    if (msg) {
+
+      msg.textContent = '';
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      'LOGIN ERROR:',
+      error
+    );
+
+
+    showLogin();
+
+
+    if (msg) {
+
+      msg.textContent =
+        msgError(error);
+
+    }
+
+  } finally {
+
+    if (loginBtn) {
+
+      loginBtn.disabled = false;
+
+      loginBtn.textContent =
+        'تسجيل الدخول';
+
+    }
+
+  }
 
 }
 
 
-/* =========================
+/* =========================================================
    LOGOUT
-========================= */
+   ========================================================= */
 
-if(logout){
+async function logoutUser() {
 
-  logout.onclick=async()=>{
+  try {
 
     await db.auth.signOut();
 
-    location.reload();
+  } catch (error) {
 
-  };
+    console.error(
+      'LOGOUT ERROR:',
+      error
+    );
+
+  }
+
+  location.reload();
 
 }
 
 
-/* =========================
-   NAVIGATION
-========================= */
+/* =========================================================
+   AUTH EVENTS
+   ========================================================= */
 
-document
-  .querySelectorAll('[data-tab]')
-  .forEach(b=>{
+function setupAuth() {
 
-    b.onclick=()=>show(b.dataset.tab);
+  if (loginBtn) {
 
-  });
+    loginBtn.addEventListener(
+      'click',
+      loginUser
+    );
+
+  }
 
 
-/* =========================
-   LOAD DATA
-========================= */
+  if (logout) {
 
-async function load(){
+    logout.addEventListener(
+      'click',
+      logoutUser
+    );
+
+  }
+
+
+  if (passwordInput) {
+
+    passwordInput.addEventListener(
+      'keydown',
+      event => {
+
+        if (
+          event.key === 'Enter'
+        ) {
+
+          loginUser();
+
+        }
+
+      }
+    );
+
+  }
+
+
+  db.auth.onAuthStateChange(
+    (event, session) => {
+
+      console.log(
+        'AUTH EVENT:',
+        event,
+        !!session
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   LOAD ALL DATA
+   ========================================================= */
+
+async function load() {
 
   const [
-    a,
-    b,
-    c,
-    d,
-    e
-  ]=await Promise.all([
+    issuesResult,
+    articlesResult,
+    sectionsResult,
+    teamResult,
+    settingsResult
+  ] = await Promise.all([
 
     db
       .from('issues')
       .select('*')
       .order(
         'issue_number',
-        {ascending:false}
+        {
+          ascending: false
+        }
       ),
 
     db
@@ -198,7 +601,9 @@ async function load(){
       .select('*')
       .order(
         'created_at',
-        {ascending:false}
+        {
+          ascending: false
+        }
       ),
 
     db
@@ -206,7 +611,9 @@ async function load(){
       .select('*')
       .order(
         'sort_order',
-        {ascending:true}
+        {
+          ascending: true
+        }
       ),
 
     db
@@ -214,86 +621,182 @@ async function load(){
       .select('*')
       .order(
         'sort_order',
-        {ascending:true}
+        {
+          ascending: true
+        }
       ),
 
     db
       .from('settings')
       .select('*')
-      .eq('id',true)
+      .eq(
+        'id',
+        true
+      )
       .maybeSingle()
 
   ]);
 
-  if(a.error) throw a.error;
-  if(b.error) throw b.error;
-  if(c.error) throw c.error;
-  if(d.error) throw d.error;
-  if(e.error) throw e.error;
 
-  D={
+  if (issuesResult.error) {
 
-    issues:a.data||[],
+    throw issuesResult.error;
 
-    articles:b.data||[],
+  }
 
-    sections:c.data||[],
 
-    team:d.data||[],
+  if (articlesResult.error) {
 
-    settings:e.data||null
+    throw articlesResult.error;
+
+  }
+
+
+  if (sectionsResult.error) {
+
+    throw sectionsResult.error;
+
+  }
+
+
+  if (teamResult.error) {
+
+    throw teamResult.error;
+
+  }
+
+
+  if (settingsResult.error) {
+
+    throw settingsResult.error;
+
+  }
+
+
+  D = {
+
+    issues:
+      issuesResult.data || [],
+
+    articles:
+      articlesResult.data || [],
+
+    sections:
+      sectionsResult.data || [],
+
+    team:
+      teamResult.data || [],
+
+    settings:
+      settingsResult.data || null
 
   };
 
-  if(stats){
 
-    stats.textContent=
-      `الأعداد ${D.issues.length} · `+
-      `المقالات ${D.articles.length} · `+
-      `الأقسام ${D.sections.length} · `+
-      `الهيئة ${D.team.length}`;
-
-  }
+  updateStats();
 
 }
 
 
-/* =========================
-   TABS
-========================= */
+/* =========================================================
+   STATS
+   ========================================================= */
 
-function show(tab){
+function updateStats() {
+
+  if (!stats) {
+
+    return;
+
+  }
+
+
+  stats.textContent =
+    `الأعداد ${D.issues.length} · ` +
+    `المقالات ${D.articles.length} · ` +
+    `الأقسام ${D.sections.length} · ` +
+    `الهيئة ${D.team.length}`;
+
+}
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+function setupNavigation() {
 
   document
-    .querySelectorAll('aside button')
-    .forEach(b=>{
+    .querySelectorAll(
+      '[data-tab]'
+    )
+    .forEach(button => {
 
-      b.classList.toggle(
-        'active',
-        b.dataset.tab===tab
+      button.addEventListener(
+        'click',
+        () => {
+
+          show(
+            button.dataset.tab
+          );
+
+        }
       );
 
     });
 
-  const views={
+}
 
-    dashboard:dashboardUI,
 
-    issues:issuesUI,
+/* =========================================================
+   SHOW TAB
+   ========================================================= */
 
-    articles:articlesUI,
+function show(tab) {
 
-    sections:sectionsUI,
+  document
+    .querySelectorAll(
+      'aside button[data-tab]'
+    )
+    .forEach(button => {
 
-    team:teamUI,
+      button.classList.toggle(
+        'active',
+        button.dataset.tab === tab
+      );
 
-    settings:settingsUI
+    });
+
+
+  const views = {
+
+    dashboard:
+      dashboardUI,
+
+    issues:
+      issuesUI,
+
+    articles:
+      articlesUI,
+
+    sections:
+      sectionsUI,
+
+    team:
+      teamUI,
+
+    settings:
+      settingsUI
 
   };
 
-  if(workspace && views[tab]){
 
-    workspace.innerHTML=
+  if (
+    workspace &&
+    views[tab]
+  ) {
+
+    workspace.innerHTML =
       views[tab]();
 
   }
@@ -301,88 +804,119 @@ function show(tab){
 }
 
 
-/* =========================
+/* =========================================================
    INPUT HELPER
-========================= */
+   ========================================================= */
 
-const input=(
+function input(
   id,
-  ph,
-  type='text'
-)=>
-  `<input
+  placeholder,
+  type = 'text'
+) {
+
+  return `
+    <input
       id="${id}"
       type="${type}"
-      placeholder="${ph}"
-   >`;
+      placeholder="${esc(placeholder)}"
+    >
+  `;
+
+}
 
 
-/* =========================
+/* =========================================================
    STORAGE UPLOAD
-========================= */
+   ========================================================= */
 
-async function upload(bucket,file){
+async function upload(
+  bucket,
+  file
+) {
 
-  if(!file){
+  if (!file) {
+
     return null;
+
   }
 
-  const safeName=file.name
-    .replace(/[^\w.\-]/g,'_');
 
-  const path=
-    Date.now()+
+  const safeName =
+    file.name
+      .replace(
+        /[^\w.\-]/g,
+        '_'
+      );
+
+
+  const path =
+    Date.now() +
     '-' +
     Math.random()
       .toString(36)
-      .substring(2,8)+
+      .substring(2, 8) +
     '-' +
     safeName;
 
+
   const {
     error
-  }=await db
+  } = await db
     .storage
     .from(bucket)
     .upload(
       path,
       file,
       {
-        upsert:false,
-        contentType:file.type
+        upsert: false,
+        contentType: file.type
       }
     );
 
-  if(error){
+
+  if (error) {
+
     throw error;
+
   }
 
-  return db
+
+  const {
+    data
+  } = db
     .storage
     .from(bucket)
-    .getPublicUrl(path)
-    .data
-    .publicUrl;
+    .getPublicUrl(path);
+
+
+  return data.publicUrl;
+
 }
 
 
-/* =========================
+/* =========================================================
    DASHBOARD
-========================= */
+   ========================================================= */
 
-function dashboardUI(){
+function dashboardUI() {
 
   return `
 
     <div class="panel">
 
-      <h1>مرحباً بك</h1>
+      <h1>
+        مرحباً بك
+      </h1>
 
       <p>
         من هنا تدير موقع مجلة
         «ضد السينما !؟» بالكامل.
-        أضف الأعداد والمقالات والأقسام
-        وهيئة التحرير والإعدادات.
+      </p>
+
+      <p>
+        يمكنك إضافة الأعداد والمقالات
+        والأقسام وهيئة التحرير وتعديل
+        إعدادات الموقع.
       </p>
 
     </div>
@@ -391,23 +925,54 @@ function dashboardUI(){
     <div class="stat-grid">
 
       <div class="stat">
-        <b>${D.issues.length}</b>
-        <span>عدد منشور</span>
+
+        <b>
+          ${D.issues.length}
+        </b>
+
+        <span>
+          عدد منشور
+        </span>
+
       </div>
 
-      <div class="stat">
-        <b>${D.articles.length}</b>
-        <span>مقال</span>
-      </div>
 
       <div class="stat">
-        <b>${D.sections.length}</b>
-        <span>قسم</span>
+
+        <b>
+          ${D.articles.length}
+        </b>
+
+        <span>
+          مقال
+        </span>
+
       </div>
 
+
       <div class="stat">
-        <b>${D.team.length}</b>
-        <span>عضو هيئة تحرير</span>
+
+        <b>
+          ${D.sections.length}
+        </b>
+
+        <span>
+          قسم
+        </span>
+
+      </div>
+
+
+      <div class="stat">
+
+        <b>
+          ${D.team.length}
+        </b>
+
+        <span>
+          عضو هيئة تحرير
+        </span>
+
       </div>
 
     </div>
@@ -417,17 +982,20 @@ function dashboardUI(){
 }
 
 
-/* =========================
-   ISSUES
-========================= */
+/* =========================================================
+   ISSUES UI
+   ========================================================= */
 
-function issuesUI(){
+function issuesUI() {
 
   return `
 
     <div class="panel">
 
-      <h2>إضافة عدد</h2>
+      <h2>
+        إضافة عدد
+      </h2>
+
 
       <div class="form">
 
@@ -437,10 +1005,12 @@ function issuesUI(){
           'number'
         )}
 
+
         ${input(
           'ititle',
           'عنوان العدد'
         )}
+
 
         ${input(
           'idate',
@@ -449,6 +1019,7 @@ function issuesUI(){
 
 
         <label>
+
           غلاف العدد
 
           <input
@@ -461,6 +1032,7 @@ function issuesUI(){
 
 
         <label>
+
           PDF العدد
 
           <input
@@ -487,68 +1059,85 @@ function issuesUI(){
 
     <div class="panel">
 
-      <h2>الأعداد المنشورة</h2>
+      <h2>
+        الأعداد المنشورة
+      </h2>
+
 
       ${
-        D.issues.map(x=>`
+        D.issues.length
 
-          <div class="item">
+          ?
 
-            <div>
+          D.issues
+            .map(issue => `
 
-              <b>
-                العدد
-                ${esc(x.issue_number)}
-              </b>
+              <div class="item">
 
-              —
-              ${esc(x.title||'')}
+                <div>
 
-            </div>
+                  <b>
+                    العدد
+                    ${esc(
+                      issue.issue_number
+                    )}
+                  </b>
 
+                  —
+                  ${esc(
+                    issue.title || ''
+                  )}
 
-            <div class="actions">
-
-              ${
-                x.pdf_url
-
-                ?
-
-                `<a
-                  href="${esc(x.pdf_url)}"
-                  target="_blank">
-
-                  PDF
-
-                </a>`
-
-                :
-
-                ''
-              }
+                </div>
 
 
-              <button
-                class="danger"
-                onclick="del(
-                  'issues',
-                  '${x.id}'
-                )">
+                <div class="actions">
 
-                حذف
+                  ${
+                    issue.pdf_url
 
-              </button>
+                      ?
 
-            </div>
+                      `
+                        <a
+                          href="${esc(
+                            issue.pdf_url
+                          )}"
+                          target="_blank"
+                          rel="noopener">
 
-          </div>
+                          PDF
 
-        `).join('')
+                        </a>
+                      `
 
-        ||
+                      :
 
-        '<p>لا توجد أعداد بعد.</p>'
+                      ''
+                  }
 
+
+                  <button
+                    class="danger"
+                    onclick="del(
+                      'issues',
+                      '${issue.id}'
+                    )">
+
+                    حذف
+
+                  </button>
+
+                </div>
+
+              </div>
+
+            `)
+            .join('')
+
+          :
+
+          '<p>لا توجد أعداد بعد.</p>'
       }
 
     </div>
@@ -558,49 +1147,94 @@ function issuesUI(){
 }
 
 
-/* =========================
+/* =========================================================
    ADD ISSUE
-========================= */
+   ========================================================= */
 
-async function addIssue(){
+async function addIssue() {
 
-  try{
+  try {
 
-    const coverFile=
-      $('cover')?.files?.[0];
+    const coverFile =
+      $('cover')
+        ?.files
+        ?.[0];
 
-    const pdfFile=
-      $('pdf')?.files?.[0];
+
+    const pdfFile =
+      $('pdf')
+        ?.files
+        ?.[0];
 
 
-    const coverUrl=
+    const coverUrl =
       await upload(
         'covers',
         coverFile
       );
 
 
-    const pdfUrl=
+    const pdfUrl =
       await upload(
         'pdfs',
         pdfFile
       );
 
 
+    const issueNumber =
+      Number(
+        $('inum')?.value
+      );
+
+
+    const title =
+      $('ititle')
+        ?.value
+        ?.trim();
+
+
+    const date =
+      $('idate')
+        ?.value
+        ?.trim();
+
+
+    if (!issueNumber) {
+
+      alert(
+        'أدخل رقم العدد.'
+      );
+
+      return;
+
+    }
+
+
+    if (!title) {
+
+      alert(
+        'أدخل عنوان العدد.'
+      );
+
+      return;
+
+    }
+
+
     const {
       error
-    }=await db
+    } = await db
       .from('issues')
       .insert({
 
         issue_number:
-          Number($('inum').value),
+          issueNumber,
 
         title:
-          $('ititle').value,
+          title,
 
         publication_date:
-          $('idate').value,
+          date,
 
         cover_image:
           coverUrl,
@@ -611,13 +1245,15 @@ async function addIssue(){
       });
 
 
-    if(error){
+    if (error) {
+
       throw error;
+
     }
 
 
     alert(
-      'تمت إضافة العدد بنجاح'
+      'تمت إضافة العدد بنجاح.'
     );
 
 
@@ -625,11 +1261,12 @@ async function addIssue(){
 
     show('issues');
 
+  } catch (error) {
 
-  }catch(e){
+    console.error(error);
 
     alert(
-      msgError(e)
+      msgError(error)
     );
 
   }
@@ -637,30 +1274,33 @@ async function addIssue(){
 }
 
 
-/* ==================================================
-   ARTICLES
-================================================== */
+/* =========================================================
+   ARTICLES UI
+   ========================================================= */
 
-function articlesUI(){
+function articlesUI() {
 
   return `
 
     <div class="panel article-form-panel">
 
-      <h2>إضافة مقال</h2>
+      <h2>
+        إضافة مقال
+      </h2>
+
 
       <p class="form-note">
-        أضف عنوان المقال، الكاتب، القسم،
-        النص، ثم ارفع صورة الكاتب وثلاث صور للمقال.
+        عنوان المقال، الكاتب، القسم،
+        صورة الكاتب، ثلاث صور للمقال
+        ونص المقال.
       </p>
 
 
       <div class="form">
 
 
-        <!-- TITLE -->
-
         <label>
+
           عنوان المقال
 
           <input
@@ -672,9 +1312,8 @@ function articlesUI(){
         </label>
 
 
-        <!-- AUTHOR -->
-
         <label>
+
           اسم الكاتب
 
           <input
@@ -686,9 +1325,8 @@ function articlesUI(){
         </label>
 
 
-        <!-- CATEGORY -->
-
         <label>
+
           القسم
 
           <input
@@ -700,8 +1338,6 @@ function articlesUI(){
         </label>
 
 
-        <!-- AUTHOR IMAGE -->
-
         <label class="upload-field">
 
           <span>
@@ -712,10 +1348,12 @@ function articlesUI(){
             id="authorImage"
             type="file"
             accept="image/*"
-            onchange="showFileName(
-              'authorImage',
-              'authorImageName'
-            )"
+            onchange="
+              showFileName(
+                'authorImage',
+                'authorImageName'
+              )
+            "
           >
 
           <small id="authorImageName">
@@ -725,8 +1363,6 @@ function articlesUI(){
         </label>
 
 
-        <!-- IMAGE 1 -->
-
         <label class="upload-field">
 
           <span>
@@ -734,17 +1370,19 @@ function articlesUI(){
           </span>
 
           <small>
-            تظهر مباشرة تحت العنوان واسم الكاتب
+            تظهر مباشرة تحت العنوان والكاتب.
           </small>
 
           <input
             id="image1"
             type="file"
             accept="image/*"
-            onchange="showFileName(
-              'image1',
-              'image1Name'
-            )"
+            onchange="
+              showFileName(
+                'image1',
+                'image1Name'
+              )
+            "
           >
 
           <small id="image1Name">
@@ -753,8 +1391,6 @@ function articlesUI(){
 
         </label>
 
-
-        <!-- CONTENT -->
 
         <label>
 
@@ -765,18 +1401,11 @@ function articlesUI(){
           <textarea
             id="acontent"
             rows="18"
-            placeholder="اكتب نص المقال هنا...
-
-افصل بين الفقرات بترك سطر فارغ.
-
-ستظهر الصورة الثانية تلقائياً في منتصف المقال،
-والصورة الثالثة قبل نهاية المقال."
+            placeholder="اكتب نص المقال هنا..."
           ></textarea>
 
         </label>
 
-
-        <!-- IMAGE 2 -->
 
         <label class="upload-field">
 
@@ -785,17 +1414,19 @@ function articlesUI(){
           </span>
 
           <small>
-            ستظهر تلقائياً في منتصف النص
+            ستظهر داخل المقال.
           </small>
 
           <input
             id="image2"
             type="file"
             accept="image/*"
-            onchange="showFileName(
-              'image2',
-              'image2Name'
-            )"
+            onchange="
+              showFileName(
+                'image2',
+                'image2Name'
+              )
+            "
           >
 
           <small id="image2Name">
@@ -805,8 +1436,6 @@ function articlesUI(){
         </label>
 
 
-        <!-- IMAGE 3 -->
-
         <label class="upload-field">
 
           <span>
@@ -814,17 +1443,19 @@ function articlesUI(){
           </span>
 
           <small>
-            ستظهر قبل نهاية المقال
+            ستظهر قرب نهاية المقال.
           </small>
 
           <input
             id="image3"
             type="file"
             accept="image/*"
-            onchange="showFileName(
-              'image3',
-              'image3Name'
-            )"
+            onchange="
+              showFileName(
+                'image3',
+                'image3Name'
+              )
+            "
           >
 
           <small id="image3Name">
@@ -833,8 +1464,6 @@ function articlesUI(){
 
         </label>
 
-
-        <!-- SAVE -->
 
         <button
           class="btn full"
@@ -845,7 +1474,6 @@ function articlesUI(){
 
         </button>
 
-
       </div>
 
     </div>
@@ -853,74 +1481,85 @@ function articlesUI(){
 
     <div class="panel">
 
-      <h2>المقالات المنشورة</h2>
+      <h2>
+        المقالات المنشورة
+      </h2>
 
 
       ${
-        D.articles.map(x=>`
+        D.articles.length
 
-          <div class="item">
+          ?
 
-            <div>
+          D.articles
+            .map(article => `
 
-              <b>
-                ${esc(x.title)}
-              </b>
+              <div class="item">
 
-              <br>
+                <div>
 
-              <small>
+                  <b>
+                    ${esc(
+                      article.title
+                    )}
+                  </b>
 
-                ${esc(
-                  x.author||''
-                )}
+                  <br>
 
-                —
+                  <small>
 
-                ${esc(
-                  x.category||''
-                )}
+                    ${esc(
+                      article.author || ''
+                    )}
 
-              </small>
+                    —
 
-              <br>
+                    ${esc(
+                      article.category || ''
+                    )}
 
-              ${
-                x.image_1
+                  </small>
 
-                ?
+                  <br>
 
-                `<small>
-                  ✓ صورة المقال
-                </small>`
+                  ${
+                    article.image_1
 
-                :
+                      ?
 
-                ''
-              }
+                      `
+                        <small>
+                          ✓ صورة المقال
+                        </small>
+                      `
 
-            </div>
+                      :
+
+                      ''
+                  }
+
+                </div>
 
 
-            <button
-              class="danger"
-              onclick="del(
-                'articles',
-                '${x.id}'
-              )">
+                <button
+                  class="danger"
+                  onclick="del(
+                    'articles',
+                    '${article.id}'
+                  )">
 
-              حذف
+                  حذف
 
-            </button>
+                </button>
 
-          </div>
+              </div>
 
-        `).join('')
+            `)
+            .join('')
 
-        ||
+          :
 
-        '<p>لا توجد مقالات بعد.</p>'
-
+          '<p>لا توجد مقالات بعد.</p>'
       }
 
     </div>
@@ -930,29 +1569,34 @@ function articlesUI(){
 }
 
 
-/* =========================
+/* =========================================================
    FILE NAME
-========================= */
+   ========================================================= */
 
 function showFileName(
   inputId,
   outputId
-){
+) {
 
-  const input=
+  const input =
     $(inputId);
 
-  const output=
+  const output =
     $(outputId);
 
-  if(!input || !output){
+
+  if (!input || !output) {
+
     return;
+
   }
 
-  const file=
+
+  const file =
     input.files?.[0];
 
-  output.textContent=
+
+  output.textContent =
     file
       ? `تم اختيار: ${file.name}`
       : 'لم يتم اختيار صورة';
@@ -960,48 +1604,48 @@ function showFileName(
 }
 
 
-/* =========================
+/* =========================================================
    ADD ARTICLE
-========================= */
+   ========================================================= */
 
-async function addArticle(){
+async function addArticle() {
 
-  const btn=
+  const btn =
     $('saveArticleBtn');
 
 
-  try{
+  try {
 
-    const title=
+    const title =
       $('atitle')
-        .value
-        .trim();
+        ?.value
+        ?.trim();
 
 
-    const author=
+    const author =
       $('aauthor')
-        .value
-        .trim();
+        ?.value
+        ?.trim();
 
 
-    const category=
+    const category =
       $('acat')
-        .value
-        .trim()
-        ||
-        'رؤى سينمائية';
+        ?.value
+        ?.trim()
+      ||
+      'رؤى سينمائية';
 
 
-    const content=
+    const content =
       $('acontent')
-        .value
-        .trim();
+        ?.value
+        ?.trim();
 
 
-    if(!title){
+    if (!title) {
 
       alert(
-        'أدخل عنوان المقال'
+        'أدخل عنوان المقال.'
       );
 
       return;
@@ -1009,10 +1653,10 @@ async function addArticle(){
     }
 
 
-    if(!content){
+    if (!content) {
 
       alert(
-        'أدخل نص المقال'
+        'أدخل نص المقال.'
       );
 
       return;
@@ -1020,83 +1664,73 @@ async function addArticle(){
     }
 
 
-    if(btn){
+    if (btn) {
 
-      btn.disabled=true;
+      btn.disabled = true;
 
-      btn.textContent=
+      btn.textContent =
         'جارٍ رفع الصور وحفظ المقال...';
 
     }
 
 
-    /*
-      صور المقالات تستخدم bucket
-      covers الموجود حالياً في Supabase.
-    */
-
-
-    const authorImageFile=
+    const authorImageFile =
       $('authorImage')
-        ?.files?.[0]
-        || null;
+        ?.files
+        ?.[0]
+      || null;
 
 
-    const image1File=
+    const image1File =
       $('image1')
-        ?.files?.[0]
-        || null;
+        ?.files
+        ?.[0]
+      || null;
 
 
-    const image2File=
+    const image2File =
       $('image2')
-        ?.files?.[0]
-        || null;
+        ?.files
+        ?.[0]
+      || null;
 
 
-    const image3File=
+    const image3File =
       $('image3')
-        ?.files?.[0]
-        || null;
+        ?.files
+        ?.[0]
+      || null;
 
 
-    /*
-      رفع الصور بالتتابع
-    */
-
-    const authorImage=
+    const authorImage =
       await upload(
         'covers',
         authorImageFile
       );
 
 
-    const image1=
+    const image1 =
       await upload(
         'covers',
         image1File
       );
 
 
-    const image2=
+    const image2 =
       await upload(
         'covers',
         image2File
       );
 
 
-    const image3=
+    const image3 =
       await upload(
         'covers',
         image3File
       );
 
 
-    /*
-      إنشاء slug
-    */
-
-    const slug=
+    const slug =
       title
         .toLowerCase()
         .trim()
@@ -1110,37 +1744,31 @@ async function addArticle(){
         );
 
 
-    /*
-      إذا كان العنوان عربياً بالكامل
-      قد ينتج slug فارغاً.
-      لذلك نضيف timestamp كحل احتياطي.
-    */
-
-    const finalSlug=
+    const finalSlug =
       slug ||
-      'article-' +
-      Date.now();
+      `article-${Date.now()}`;
 
-
-    /*
-      حفظ المقال
-    */
 
     const {
       error
-    }=await db
+    } = await db
       .from('articles')
       .insert({
 
-        title:title,
+        title:
+          title,
 
-        slug:finalSlug,
+        slug:
+          finalSlug,
 
-        author:author,
+        author:
+          author,
 
-        category:category,
+        category:
+          category,
 
-        content:content,
+        content:
+          content,
 
         author_image:
           authorImage,
@@ -1157,7 +1785,7 @@ async function addArticle(){
       });
 
 
-    if(error){
+    if (error) {
 
       throw error;
 
@@ -1165,7 +1793,7 @@ async function addArticle(){
 
 
     alert(
-      'تم حفظ المقال ورفع الصور بنجاح'
+      'تم حفظ المقال ورفع الصور بنجاح.'
     );
 
 
@@ -1173,24 +1801,26 @@ async function addArticle(){
 
     show('articles');
 
+  } catch (error) {
 
-  }catch(e){
-
-    console.error(e);
-
-    alert(
-      'تعذر حفظ المقال:\n\n' +
-      msgError(e)
+    console.error(
+      'ARTICLE ERROR:',
+      error
     );
 
 
-  }finally{
+    alert(
+      'تعذر حفظ المقال:\n\n' +
+      msgError(error)
+    );
 
-    if(btn){
+  } finally {
 
-      btn.disabled=false;
+    if (btn) {
 
-      btn.textContent=
+      btn.disabled = false;
+
+      btn.textContent =
         'حفظ المقال';
 
     }
@@ -1200,17 +1830,20 @@ async function addArticle(){
 }
 
 
-/* =========================
-   SECTIONS
-========================= */
+/* =========================================================
+   SECTIONS UI
+   ========================================================= */
 
-function sectionsUI(){
+function sectionsUI() {
 
   return `
 
     <div class="panel">
 
-      <h2>إضافة قسم</h2>
+      <h2>
+        إضافة قسم
+      </h2>
+
 
       <div class="form">
 
@@ -1222,8 +1855,8 @@ function sectionsUI(){
 
         <textarea
           id="sdesc"
-          placeholder="وصف القسم">
-        </textarea>
+          placeholder="وصف القسم"
+        ></textarea>
 
 
         ${input(
@@ -1248,38 +1881,70 @@ function sectionsUI(){
 
     <div class="panel">
 
-      <h2>الأقسام</h2>
+      <h2>
+        الأقسام
+      </h2>
 
 
       ${
-        D.sections.map(x=>`
+        D.sections.length
 
-          <div class="item">
+          ?
 
-            <b>
-              ${esc(x.name)}
-            </b>
+          D.sections
+            .map(section => `
+
+              <div class="item">
+
+                <div>
+
+                  <b>
+                    ${esc(
+                      section.name
+                    )}
+                  </b>
+
+                  ${
+                    section.description
+
+                      ?
+
+                      `
+                        <br>
+                        <small>
+                          ${esc(
+                            section.description
+                          )}
+                        </small>
+                      `
+
+                      :
+
+                      ''
+                  }
+
+                </div>
 
 
-            <button
-              class="danger"
-              onclick="del(
-                'sections',
-                '${x.id}'
-              )">
+                <button
+                  class="danger"
+                  onclick="del(
+                    'sections',
+                    '${section.id}'
+                  )">
 
-              حذف
+                  حذف
 
-            </button>
+                </button>
 
-          </div>
+              </div>
 
-        `).join('')
+            `)
+            .join('')
 
-        ||
+          :
 
-        '<p>لا توجد أقسام بعد.</p>'
-
+          '<p>لا توجد أقسام بعد.</p>'
       }
 
     </div>
@@ -1289,18 +1954,22 @@ function sectionsUI(){
 }
 
 
-async function addSection(){
+/* =========================================================
+   ADD SECTION
+   ========================================================= */
 
-  const name=
+async function addSection() {
+
+  const name =
     $('sname')
-      .value
-      .trim();
+      ?.value
+      ?.trim();
 
 
-  if(!name){
+  if (!name) {
 
     alert(
-      'أدخل اسم القسم'
+      'أدخل اسم القسم.'
     );
 
     return;
@@ -1310,49 +1979,55 @@ async function addSection(){
 
   const {
     error
-  }=await db
+  } = await db
     .from('sections')
     .insert({
 
-      name:name,
+      name:
+        name,
 
       description:
-        $('sdesc').value,
+        $('sdesc')
+          ?.value
+          || '',
 
       sort_order:
         Number(
-          $('ssort').value
+          $('ssort')
+            ?.value
         ) || 0
 
     });
 
 
-  if(error){
+  if (error) {
 
     alert(
       msgError(error)
     );
 
-  }else{
-
-    alert(
-      'تم حفظ القسم'
-    );
-
-    await load();
-
-    show('sections');
+    return;
 
   }
+
+
+  alert(
+    'تم حفظ القسم.'
+  );
+
+
+  await load();
+
+  show('sections');
 
 }
 
 
-/* =========================
-   TEAM
-========================= */
+/* =========================================================
+   TEAM UI
+   ========================================================= */
 
-function teamUI(){
+function teamUI() {
 
   return `
 
@@ -1373,14 +2048,14 @@ function teamUI(){
 
         ${input(
           'trole',
-          'الصفة/الدور'
+          'الصفة / الدور'
         )}
 
 
         <textarea
           id="tbio"
-          placeholder="نبذة">
-        </textarea>
+          placeholder="نبذة"
+        ></textarea>
 
 
         ${input(
@@ -1411,44 +2086,72 @@ function teamUI(){
 
 
       ${
-        D.team.map(x=>`
+        D.team.length
 
-          <div class="item">
+          ?
 
-            <div>
+          D.team
+            .map(member => `
 
-              <b>
-                ${esc(x.name)}
-              </b>
+              <div class="item">
 
-              <br>
+                <div>
 
-              <small>
-                ${esc(x.role||'')}
-              </small>
+                  <b>
+                    ${esc(
+                      member.name
+                    )}
+                  </b>
 
-            </div>
+                  <br>
+
+                  <small>
+                    ${esc(
+                      member.role || ''
+                    )}
+                  </small>
+
+                  ${
+                    member.bio
+
+                      ?
+
+                      `
+                        <br>
+                        <small>
+                          ${esc(
+                            member.bio
+                          )}
+                        </small>
+                      `
+
+                      :
+
+                      ''
+                  }
+
+                </div>
 
 
-            <button
-              class="danger"
-              onclick="del(
-                'team',
-                '${x.id}'
-              )">
+                <button
+                  class="danger"
+                  onclick="del(
+                    'team',
+                    '${member.id}'
+                  )">
 
-              حذف
+                  حذف
 
-            </button>
+                </button>
 
-          </div>
+              </div>
 
-        `).join('')
+            `)
+            .join('')
 
-        ||
+          :
 
-        '<p>لا توجد بيانات بعد.</p>'
-
+          '<p>لا توجد بيانات بعد.</p>'
       }
 
     </div>
@@ -1458,18 +2161,22 @@ function teamUI(){
 }
 
 
-async function addTeam(){
+/* =========================================================
+   ADD TEAM
+   ========================================================= */
 
-  const name=
+async function addTeam() {
+
+  const name =
     $('tname')
-      .value
-      .trim();
+      ?.value
+      ?.trim();
 
 
-  if(!name){
+  if (!name) {
 
     alert(
-      'أدخل الاسم'
+      'أدخل الاسم.'
     );
 
     return;
@@ -1479,55 +2186,63 @@ async function addTeam(){
 
   const {
     error
-  }=await db
+  } = await db
     .from('team')
     .insert({
 
-      name:name,
+      name:
+        name,
 
       role:
-        $('trole').value,
+        $('trole')
+          ?.value
+          || '',
 
       bio:
-        $('tbio').value,
+        $('tbio')
+          ?.value
+          || '',
 
       sort_order:
         Number(
-          $('tsort').value
+          $('tsort')
+            ?.value
         ) || 0
 
     });
 
 
-  if(error){
+  if (error) {
 
     alert(
       msgError(error)
     );
 
-  }else{
-
-    alert(
-      'تم حفظ عضو هيئة التحرير'
-    );
-
-    await load();
-
-    show('team');
+    return;
 
   }
+
+
+  alert(
+    'تم حفظ عضو هيئة التحرير.'
+  );
+
+
+  await load();
+
+  show('team');
 
 }
 
 
-/* =========================
-   SETTINGS
-========================= */
+/* =========================================================
+   SETTINGS UI
+   ========================================================= */
 
-function settingsUI(){
+function settingsUI() {
 
-  const s=
-    D.settings||{};
+  const s =
+    D.settings || {};
 
 
   return `
@@ -1545,7 +2260,7 @@ function settingsUI(){
         <input
           id="siteName"
           value="${esc(
-            s.site_name||''
+            s.site_name || ''
           )}"
           placeholder="اسم الموقع"
         >
@@ -1554,7 +2269,7 @@ function settingsUI(){
         <input
           id="heroTitle"
           value="${esc(
-            s.hero_title||''
+            s.hero_title || ''
           )}"
           placeholder="العنوان الرئيسي"
         >
@@ -1564,14 +2279,22 @@ function settingsUI(){
           id="heroSubtitle"
           placeholder="وصف الواجهة"
         >${esc(
-          s.hero_subtitle||''
+          s.hero_subtitle || ''
+        )}</textarea>
+
+
+        <textarea
+          id="heroDescription"
+          placeholder="الوصف الرئيسي"
+        >${esc(
+          s.hero_description || ''
         )}</textarea>
 
 
         <input
           id="aboutTitle"
           value="${esc(
-            s.about_title||''
+            s.about_title || ''
           )}"
           placeholder="عنوان من نحن"
         >
@@ -1581,7 +2304,7 @@ function settingsUI(){
           id="aboutText"
           placeholder="من نحن"
         >${esc(
-          s.about_text||''
+          s.about_text || ''
         )}</textarea>
 
 
@@ -1589,20 +2312,31 @@ function settingsUI(){
           id="aboutText2"
           placeholder="نص إضافي"
         >${esc(
-          s.about_text_2||''
+          s.about_text_2 || ''
         )}</textarea>
 
 
         <input
           id="contact"
           value="${esc(
-            s.contact_email||''
+            s.contact_email || ''
           )}"
           placeholder="البريد الإلكتروني"
         >
 
 
-        <select id="currentIssue">
+        <input
+          id="heroCoverUrl"
+          value="${esc(
+            s.hero_cover_url || ''
+          )}"
+          placeholder="رابط صورة الواجهة"
+        >
+
+
+        <select
+          id="currentIssue"
+        >
 
           <option value="">
             اختيار العدد الحالي
@@ -1610,22 +2344,26 @@ function settingsUI(){
 
 
           ${
-            D.issues.map(x=>`
+            D.issues
+              .map(issue => `
 
-              <option
-                value="${x.id}"
-                ${
-                  s.current_issue_id===x.id
-                    ? 'selected'
-                    : ''
-                }>
+                <option
+                  value="${issue.id}"
+                  ${
+                    s.current_issue_id === issue.id
+                      ? 'selected'
+                      : ''
+                  }>
 
-                العدد
-                ${x.issue_number}
+                  العدد
+                  ${esc(
+                    issue.issue_number
+                  )}
 
-              </option>
+                </option>
 
-            `).join('')
+              `)
+              .join('')
           }
 
         </select>
@@ -1649,115 +2387,182 @@ function settingsUI(){
 }
 
 
-async function saveSettings(){
+/* =========================================================
+   SAVE SETTINGS
+   ========================================================= */
+
+async function saveSettings() {
 
   const {
     error
-  }=await db
+  } = await db
     .from('settings')
     .upsert({
 
-      id:true,
+      id:
+        true,
 
       site_name:
-        $('siteName').value ||
+        $('siteName')
+          ?.value
+        ||
         'ضد السينما !؟ | Contre Cinéma',
 
       hero_title:
-        $('heroTitle').value,
+        $('heroTitle')
+          ?.value
+          || '',
 
       hero_subtitle:
-        $('heroSubtitle').value,
+        $('heroSubtitle')
+          ?.value
+          || '',
+
+      hero_description:
+        $('heroDescription')
+          ?.value
+          || '',
+
+      hero_cover_url:
+        $('heroCoverUrl')
+          ?.value
+          || '',
 
       about_title:
-        $('aboutTitle').value,
+        $('aboutTitle')
+          ?.value
+          || '',
 
       about_text:
-        $('aboutText').value,
+        $('aboutText')
+          ?.value
+          || '',
 
       about_text_2:
-        $('aboutText2').value,
+        $('aboutText2')
+          ?.value
+          || '',
 
       contact_email:
-        $('contact').value,
+        $('contact')
+          ?.value
+          || '',
 
       current_issue_id:
-        $('currentIssue').value ||
-        null
+        $('currentIssue')
+          ?.value
+          || null
 
     });
 
 
-  if(error){
+  if (error) {
 
     alert(
       msgError(error)
     );
 
-  }else{
-
-    alert(
-      'تم حفظ الإعدادات'
-    );
-
-    await load();
-
-    show('settings');
+    return;
 
   }
+
+
+  alert(
+    'تم حفظ الإعدادات.'
+  );
+
+
+  await load();
+
+  show('settings');
 
 }
 
 
-/* =========================
+/* =========================================================
    DELETE
-========================= */
+   ========================================================= */
 
 async function del(
   table,
   id
-){
+) {
 
-  if(
-    !confirm(
-      'هل تريد الحذف؟'
-    )
-  ){
+  const confirmed =
+    confirm(
+      'هل تريد حذف هذا العنصر؟'
+    );
+
+
+  if (!confirmed) {
+
     return;
+
   }
 
 
   const {
     error
-  }=await db
+  } = await db
     .from(table)
     .delete()
-    .eq('id',id);
+    .eq(
+      'id',
+      id
+    );
 
 
-  if(error){
+  if (error) {
 
     alert(
       msgError(error)
     );
 
-  }else{
-
-    alert(
-      'تم الحذف'
-    );
-
-    await load();
-
-    show(table);
+    return;
 
   }
+
+
+  alert(
+    'تم الحذف.'
+  );
+
+
+  await load();
+
+
+  const tab =
+    table === 'issues'
+      ? 'issues'
+      : table === 'articles'
+        ? 'articles'
+        : table === 'sections'
+          ? 'sections'
+          : table === 'team'
+            ? 'team'
+            : 'dashboard';
+
+
+  show(tab);
 
 }
 
 
-/* =========================
-   START
-========================= */
+/* =========================================================
+   START APPLICATION
+   ========================================================= */
 
-boot();
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    getElements();
+
+    setupAuth();
+
+    setupNavigation();
+
+    boot();
+
+  }
+);
