@@ -153,14 +153,12 @@ async function isAdmin() {
       user.email
     );
 
-
     const {
       data,
       error
     } = await db.rpc(
       'is_admin'
     );
-
 
     if (error) {
 
@@ -177,7 +175,6 @@ async function isAdmin() {
       'IS_ADMIN RESULT:',
       data
     );
-
 
     return data === true;
 
@@ -409,7 +406,6 @@ async function loginUser() {
       data.user?.id,
       data.user?.email
     );
-
 
     const admin =
       await isAdmin();
