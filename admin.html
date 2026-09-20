@@ -1,18 +1,205 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
+
 <head>
+
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>ضد السينما !؟</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
 
-  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>إدارة ضد السينما !؟</title>
 
-  <script>
-    window.location.replace("index.html");
-  </script>
+  <meta
+    name="robots"
+    content="noindex, nofollow, noarchive"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+
 </head>
 
 <body>
+
+  <!-- =========================
+       LOGIN
+       ========================= -->
+
+  <section
+    id="login"
+    class="login-page"
+  >
+
+    <div class="login-box">
+
+      <h1>
+        ضد السينما !؟
+      </h1>
+
+      <p>
+        لوحة إدارة الموقع
+      </p>
+
+      <input
+        id="email"
+        type="email"
+        placeholder="البريد الإلكتروني"
+        autocomplete="email"
+      >
+
+      <input
+        id="password"
+        type="password"
+        placeholder="كلمة المرور"
+        autocomplete="current-password"
+      >
+
+      <button
+        id="loginBtn"
+        type="button"
+      >
+        تسجيل الدخول
+      </button>
+
+      <div id="msg"></div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================
+       ADMIN PANEL
+       ========================= -->
+
+  <section
+    id="panel"
+    hidden
+  >
+
+    <header class="admin-header">
+
+      <div>
+
+        <strong>
+          ضد السينما !؟
+        </strong>
+
+        <span>
+          لوحة الإدارة
+        </span>
+
+      </div>
+
+      <button
+        id="logout"
+        type="button"
+      >
+        تسجيل الخروج
+      </button>
+
+    </header>
+
+
+    <div class="admin-layout">
+
+
+      <!-- =====================
+           SIDEBAR
+           ===================== -->
+
+      <aside>
+
+        <button
+          data-tab="dashboard"
+          class="active"
+          type="button"
+        >
+          الرئيسية
+        </button>
+
+        <button
+          data-tab="issues"
+          type="button"
+        >
+          الأعداد
+        </button>
+
+        <button
+          data-tab="articles"
+          type="button"
+        >
+          المقالات
+        </button>
+
+        <button
+          data-tab="sections"
+          type="button"
+        >
+          الأقسام
+        </button>
+
+        <button
+          data-tab="team"
+          type="button"
+        >
+          هيئة التحرير
+        </button>
+
+        <button
+          data-tab="settings"
+          type="button"
+        >
+          إعدادات الموقع
+        </button>
+
+      </aside>
+
+
+      <!-- =====================
+           WORKSPACE
+           ===================== -->
+
+      <main>
+
+        <div
+          id="stats"
+          class="stats"
+        ></div>
+
+        <div
+          id="workspace"
+        ></div>
+
+      </main>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================
+       SUPABASE
+       ========================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+
+  <!-- =========================
+       ADMIN JS
+       ========================= -->
+
+  <script
+    src="admin.js"
+  ></script>
+
 </body>
+
 </html>
