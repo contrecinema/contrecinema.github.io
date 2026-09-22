@@ -11,6 +11,14 @@ collections:
     folder: "_posts"
     create: true
     fields:
-      - {label: "العنوان", name: "title", widget: "string"}
-      - {label: "التاريخ", name: "date", widget: "datetime"}
-      - {label: "المحتوى", name: "body", widget: "markdown"}
+      - label: "العنوان"
+        name: "title"
+        widget: "string"
+
+      - label: "التاريخ"
+        name: "date"
+        widget: "datetime"
+
+      - label: "المحتوى"
+        name: "body"
+        widget: "markdown"
