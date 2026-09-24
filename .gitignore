@@ -1,0 +1,7 @@
+# secrets — never commit
+.secrets/
+.env
+.env.local
+*.pat
+node_modules/
+.DS_Store
