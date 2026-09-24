@@ -34,6 +34,7 @@ let D = {
   articles: [],
   sections: [],
   team: [],
+  editors: [],
   settings: null
 };
 
@@ -554,6 +555,7 @@ async function load() {
     articlesResult,
     sectionsResult,
     teamResult,
+    editorsResult,
     settingsResult
   ] = await Promise.all([
 
@@ -598,6 +600,16 @@ async function load() {
       ),
 
     db
+      .from('editors')
+      .select('*')
+      .order(
+        'sort_order',
+        {
+          ascending: true
+        }
+      ),
+
+    db
       .from('settings')
       .select('*')
       .eq(
@@ -632,6 +644,12 @@ async function load() {
 
   }
 
+  if (editorsResult.error) {
+
+    throw editorsResult.error;
+
+  }
+
   if (settingsResult.error) {
 
     throw settingsResult.error;
@@ -651,6 +669,9 @@ async function load() {
 
     team:
       teamResult.data || [],
+
+    editors:
+      editorsResult.data || [],
 
     settings:
       settingsResult.data || null
@@ -677,7 +698,8 @@ function updateStats() {
     `الأعداد ${D.issues.length} · ` +
     `المقالات ${D.articles.length} · ` +
     `الأقسام ${D.sections.length} · ` +
-    `الهيئة ${D.team.length}`;
+    `الهيئة ${D.team.length} · ` +
+    `المحررون ${D.editors.length}`;
 
 }
 
@@ -743,6 +765,9 @@ function show(tab) {
 
     team:
       teamUI,
+
+    editors:
+      editorsUI,
 
     settings:
       settingsUI
@@ -1918,6 +1943,30 @@ function teamUI() {
           placeholder="نبذة"
         ></textarea>
 
+        <label class="upload-field">
+
+          <span>
+            صورة العضو
+          </span>
+
+          <input
+            id="tphoto"
+            type="file"
+            accept="image/*"
+            onchange="
+              showFileName(
+                'tphoto',
+                'tphotoName'
+              )
+            "
+          >
+
+          <small id="tphotoName">
+            لم يتم اختيار صورة
+          </small>
+
+        </label>
+
         ${input(
           'tsort',
           'الترتيب',
@@ -1951,6 +2000,25 @@ function teamUI() {
             .map(member => `
 
               <div class="item">
+
+                ${
+                  member.image_url
+
+                    ?
+
+                    `
+                      <img
+                        class="thumb"
+                        src="${esc(member.image_url)}"
+                        alt="${esc(member.name)}"
+                        loading="lazy"
+                      >
+                    `
+
+                    :
+
+                    ''
+                }
 
                 <div>
 
@@ -2037,6 +2105,15 @@ async function addTeam() {
 
   }
 
+  const photo =
+    await upload(
+      'covers',
+      $('tphoto')
+        ?.files
+        ?.[0]
+      || null
+    );
+
   const {
     error
   } = await db
@@ -2045,6 +2122,9 @@ async function addTeam() {
 
       name:
         name,
+
+      image_url:
+        photo,
 
       role:
         $('trole')
@@ -2081,6 +2161,230 @@ async function addTeam() {
   await load();
 
   show('team');
+
+}
+
+/* =========================================================
+   EDITORS UI
+   ========================================================= */
+
+function editorsUI() {
+
+  return `
+
+    <div class="panel">
+
+      <h2>
+        إضافة محرر
+      </h2>
+
+      <div class="form">
+
+        ${input(
+          'ename',
+          'الاسم'
+        )}
+
+        ${input(
+          'esurname',
+          'اللقب'
+        )}
+
+        <label class="upload-field">
+
+          <span>
+            صورة المحرر
+          </span>
+
+          <input
+            id="ephoto"
+            type="file"
+            accept="image/*"
+            onchange="
+              showFileName(
+                'ephoto',
+                'ephotoName'
+              )
+            "
+          >
+
+          <small id="ephotoName">
+            لم يتم اختيار صورة
+          </small>
+
+        </label>
+
+        ${input(
+          'esort',
+          'الترتيب',
+          'number'
+        )}
+
+        <button
+          class="btn full"
+          onclick="addEditor()">
+
+          حفظ المحرر
+
+        </button>
+
+      </div>
+
+    </div>
+
+    <div class="panel">
+
+      <h2>
+        المحررون
+      </h2>
+
+      ${
+        D.editors.length
+
+          ?
+
+          D.editors
+            .map(editor => `
+
+              <div class="item">
+
+                ${
+                  editor.image_url
+
+                    ?
+
+                    `
+                      <img
+                        class="thumb"
+                        src="${esc(editor.image_url)}"
+                        alt="${esc(
+                          [editor.name,editor.surname]
+                            .filter(Boolean)
+                            .join(' ')
+                        )}"
+                        loading="lazy"
+                      >
+                    `
+
+                    :
+
+                    ''
+                }
+
+                <div>
+
+                  <b>
+                    ${esc(
+
+                      [editor.name,editor.surname]
+                        .filter(Boolean)
+                        .join(' ')
+
+                    )}
+                  </b>
+
+                </div>
+
+                <button
+                  class="danger"
+                  onclick="del(
+                    'editors',
+                    '${editor.id}'
+                  )">
+
+                  حذف
+
+                </button>
+
+              </div>
+
+            `)
+            .join('')
+
+          :
+
+          '<p>لا توجد بيانات بعد.</p>'
+      }
+
+    </div>
+
+  `;
+
+}
+
+/* =========================================================
+   ADD EDITOR
+   ========================================================= */
+
+async function addEditor() {
+
+  const name =
+    $('ename')
+      ?.value
+      ?.trim();
+
+  if (!name) {
+
+    alert(
+      'أدخل الاسم.'
+    );
+
+    return;
+
+  }
+
+  const photo =
+    await upload(
+      'covers',
+      $('ephoto')
+        ?.files
+        ?.[0]
+      || null
+    );
+
+  const {
+    error
+  } = await db
+    .from('editors')
+    .insert({
+
+      name:
+        name,
+
+      surname:
+        $('esurname')
+          ?.value
+          ?.trim()
+        || '',
+
+      image_url:
+        photo,
+
+      sort_order:
+        Number(
+          $('esort')
+            ?.value
+        ) || 0
+
+    });
+
+  if (error) {
+
+    alert(
+      msgError(error)
+    );
+
+    return;
+
+  }
+
+  alert(
+    'تم حفظ المحرر.'
+  );
+
+  await load();
+
+  show('editors');
 
 }
 

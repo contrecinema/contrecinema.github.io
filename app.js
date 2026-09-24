@@ -793,6 +793,97 @@ function renderTeam(items){
 
 
 /* =========================================================
+   EDITORS
+========================================================= */
+
+function renderEditors(items){
+
+  const target=
+    $('#editorsGrid');
+
+  if(!target){
+    return;
+  }
+
+
+  target.innerHTML=
+    items.length
+
+    ?
+
+    items.map(x=>`
+
+      <article
+        class="person"
+      >
+
+        <div class="avatar">
+
+          ${
+            safeUrl(
+              x.image_url
+            )
+
+            ?
+
+            `
+            <img
+              src="${esc(
+                safeUrl(
+                  x.image_url
+                )
+              )}"
+              alt="${esc(
+                [x.name,x.surname]
+                  .filter(Boolean)
+                  .join(' ')
+              )}"
+              loading="lazy"
+            >
+            `
+
+            :
+
+            esc(
+              (x.name||'?')
+                .slice(0,1)
+            )
+          }
+
+        </div>
+
+
+        <h3>
+
+          ${esc(
+
+            [x.name,x.surname]
+              .filter(Boolean)
+              .join(' ')
+
+          )}
+
+        </h3>
+
+      </article>
+
+    `).join('')
+
+    :
+
+    `
+    <div class="empty">
+
+      أضف المحررين
+      من لوحة التحكم.
+
+    </div>
+    `;
+
+}
+
+
+/* =========================================================
    ARTICLE READER
 ========================================================= */
 
@@ -1702,6 +1793,7 @@ async function main(){
     sections,
     articles,
     team,
+    editors,
     settings
   ]=await Promise.all([
 
@@ -1725,6 +1817,12 @@ async function main(){
 
     get(
       'team',
+      'sort_order',
+      true
+    ),
+
+    get(
+      'editors',
       'sort_order',
       true
     ),
@@ -1785,6 +1883,15 @@ async function main(){
 
   renderTeam(
     team
+  );
+
+
+  /*
+    Editors
+  */
+
+  renderEditors(
+    editors
   );
 
 
