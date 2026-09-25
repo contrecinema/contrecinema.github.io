@@ -26,7 +26,7 @@ auth:
   avatar_url_claim: avatar_url
 
 # Better Decap + Bridge logo (optional)
-logo_url: https://decapbridge.com/decapcms-with-bridge.svg
+logo_url: ../assets/logo.png
 
 # Add site links in Decap CMS (optional)
 site_url: https://gentle-mermaid-70455f.netlify.app
