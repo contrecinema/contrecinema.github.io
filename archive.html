@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>أرشيف المقالات - ضد السينما</title>
+    <!-- مكتبة Supabase عبر CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <h1>أرشيف المقالات</h1>
+    
+    <!-- قائمة الأقسام للفلترة -->
+    <div id="categories-nav">
+        <button onclick="filterByCategory('all')">الكل</button>
+        <button onclick="filterByCategory('مهرجانات')">مهرجانات</button>
+        <button onclick="filterByCategory('قراءات')">قراءات</button>
+        <!-- أضف بقية الأقسام هنا -->
+    </div>
+
+    <!-- حاوية عرض المقالات -->
+    <div id="articles-container">
+        جاري تحميل المقالات...
+    </div>
+
+    <script>
+        // إعداد اتصال Supabase (استبدل القيم بمعلومات مشروعك الحقيقية)
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // دالة لجلب وعرض المقالات
+        async function fetchArticles(category = 'all') {
+            const container = document.getElementById('articles-container');
+            container.innerHTML = 'جاري التحميل...';
+
+            let query = supabase
+                .from('articles') // اسم جدول المقالات في قاعدة البيانات لديك
+                .select('*')
+                .order('created_at', { ascending: false }); // ترتيب من الأحدث للأقدم
+
+            // إذا تم اختيار قسم معين، نقوم بالفلترة
+            if (category !== 'all') {
+                query = query.eq('category', category);
+            }
+
+            const { data: articles, error } = await query;
+
+            if (error) {
+                container.innerHTML = 'حدث خطأ أثناء تحميل المقالات.';
+                console.error(error);
+                return;
+            }
+
+            if (articles.length === 0) {
+                container.innerHTML = 'لا توجد مقالات في هذا القسم حالياً.';
+                return;
+            }
+
+            // عرض المقالات داخل الصفحة
+            container.innerHTML = articles.map(article => `
+                <div class="article-card" style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
+                    <span style="color: red; font-size: 14px;">${article.category || 'عام'}</span>
+                    <h2><a href="article.html?id=${article.id}">${article.title}</a></h2>
+                    <p>${article.excerpt || ''}</p>
+                </div>
+            `).join('');
+        }
+
+        // دالة تفعيل فلترة الأقسام عند الضغط
+        function filterByCategory(cat) {
+            fetchArticles(cat);
+        }
+
+        // جلب كل المقالات عند فتح الصفحة لأول مرة
+        fetchArticles();
+    </script>
+</body>
+</html>
