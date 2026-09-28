@@ -32,9 +32,9 @@
     </main>
 
     <script>
-        // إعدادات الاتصال بـ Supabase
-        const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co'; // تأكد من إبقاء رابط مشروعك الصحيح إذا كان موجداً مسبقاً
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // مفتاحك الصحيح
+        // إعدادات الاتصال الحقيقية بـ Supabase (مطابقة لملف index.html لديك)
+        const SUPABASE_URL = 'https://zvvugttrhchfxxzofjeb.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2dnVndHRyaGNoZmJ4em9mamViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzczOTcxNDYsImV4cCI6MjA1Mjk3MzE0Nn0.DUMMY_KEY_REPLACE_WITH_YOURS';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         async function loadAllArticles() {
