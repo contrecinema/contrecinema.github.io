@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>أرشيف المقالات - ضد السينما</title>
     <link rel="stylesheet" href="style.css">
+    <!-- مكتبة Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
     <header class="top">
         <div class="topline">
             <div class="wrap topin">
@@ -25,49 +27,56 @@
     <main class="wrap" style="padding: 40px 20px;">
         <h1 style="margin-bottom: 30px; font-size: 24px; border-bottom: 2px solid #333; padding-bottom: 10px;">أرشيف المقالات</h1>
         
-        <!-- عرض المقالات مباشرة وبدون أي أزرار فلترة معقدة -->
+        <!-- حاوية جلب وعرض جميع المقالات -->
         <div id="articles-container">
             <p>جاري تحميل المقالات...</p>
         </div>
     </main>
 
+    <!-- سكريبت لجلب كافة المقالات مباشرة من Supabase المستخدَم في app.js -->
     <script>
-        // إعدادات الاتصال الحقيقية بـ Supabase (مطابقة لملف index.html لديك)
-        const SUPABASE_URL = 'https://zvvugttrhchfxxzofjeb.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2dnVndHRyaGNoZmJ4em9mamViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzczOTcxNDYsImV4cCI6MjA1Mjk3MzE0Nn0.DUMMY_KEY_REPLACE_WITH_YOURS';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        async function loadAllArticles() {
+        async function loadArchiveArticles() {
             const container = document.getElementById('articles-container');
             
-            // جلب جميع المقالات مرتبطة من الأحدث للأقدم دون فلترة
-            const { data: articles, error } = await supabase
-                .from('articles')
-                .select('*')
-                .order('created_at', { ascending: false });
+            try {
+                // استخدام supabase المعرّف مسبقاً أو جلبها مباشرة عبر نفس مفاتيح مشروعك
+                const SUPABASE_URL = 'https://zvvugttrhchfxxzofjeb.supabase.co';
+                // بما أننا سنعتمد على جلب البيانات مباشرة، نستخدم نفس طريقة app.js:
+                const { data: articles, error } = await window.supabase ? 
+                    window.supabase.from('articles').select('*').order('created_at', { ascending: false }) : 
+                    { data: null, error: true };
 
-            if (error) {
-                container.innerHTML = '<p>حدث خطأ أثناء تحميل المقالات.</p>';
-                return;
+                if (error || !articles) {
+                    // طريقة بديلة للتأكد من جلب البيانات لو كان الاتصال يتم عبر app.js
+                    container.innerHTML = '<p>جлу تحميل المقالات... يرجى التأكد من الاتصال.</p>';
+                    return;
+                }
+
+                if (articles.length === 0) {
+                    container.innerHTML = '<p>لا توجد مقالات منشورة حالياً.</p>';
+                    return;
+                }
+
+                // عرض جميع المقالات دفعة واحدة بدون فلاتر
+                container.innerHTML = articles.map(article => `
+                    <article style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                        <h2 style="margin: 0 0 10px 0; font-size: 20px;">
+                            <a href="article.html?id=${article.id}" style="text-decoration: none; color: #111;">${article.title}</a>
+                        </h2>
+                        <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 0;">${article.excerpt || ''}</p>
+                    </article>
+                `).join('');
+
+            } catch (err) {
+                container.innerHTML = '<p>حدث خطأ أثناء تحميل الأرشيف.</p>';
             }
-
-            if (!articles || articles.length === 0) {
-                container.innerHTML = '<p>لا توجد مقالات منشورة حالياً.</p>';
-                return;
-            }
-
-            // عرض المقالات بنفس تصميم المقالات العادي
-            container.innerHTML = articles.map(article => `
-                <article style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-                    <h2 style="margin: 0 0 10px 0; font-size: 20px;">
-                        <a href="article.html?id=${article.id}" style="text-decoration: none; color: #111;">${article.title}</a>
-                    </h2>
-                    <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 0;">${article.excerpt || ''}</p>
-                </article>
-            `).join('');
         }
 
-        loadAllArticles();
+        // تنفيذ الدالة عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', loadArchiveArticles);
     </script>
+    
+    <!-- ربط ملف app.js إن احتجته للوظائف الأخرى -->
+    <script src="app.js"></script>
 </body>
 </html>
