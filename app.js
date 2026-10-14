@@ -230,6 +230,19 @@ function renderIssues(items){
           <strong>
             العدد
             ${esc(x.issue_number)}
+            ${
+              (String(x.publication_date||'')
+                .match(/(?:19|20)\d{2}/)||[])[0]
+              ?
+              `<span class="issue-year">(${
+                esc(
+                  (String(x.publication_date||'')
+                    .match(/(?:19|20)\d{2}/)||[])[0]
+                )
+              })</span>`
+              :
+              ''
+            }
           </strong>
 
 
@@ -481,8 +494,11 @@ function renderSections(items){
   target.innerHTML=
     a.map(x=>`
 
-      <div
+      <a
         class="section-card"
+        href="section.html?slug=${
+          encodeURIComponent(x.name)
+        }"
       >
 
         <b>
@@ -499,7 +515,7 @@ function renderSections(items){
 
         </p>
 
-      </div>
+      </a>
 
     `).join('');
 
@@ -678,6 +694,12 @@ function renderArticles(items){
   /*
     click
   */
+
+  bindArticleClicks(target);
+
+}
+
+function bindArticleClicks(target){
 
   target
     .querySelectorAll(
@@ -1138,6 +1160,16 @@ function addArticleReaderStyles(){
       color:#111;
     }
 
+
+    .cc-author-link{
+      color:#a40000;
+      font-weight:700;
+      text-decoration:none;
+    }
+
+    .cc-author-link:hover{
+      text-decoration:underline;
+    }
 
     .cc-article-author{
       display:flex;
@@ -2110,14 +2142,23 @@ function openArticle(id){
       }
 
 
-      <span>
+      ${
+        article.author
+        ?
 
-        ${esc(
-          article.author ||
-          'هيئة التحرير'
-        )}
+        `<a
+          class="cc-author-link"
+          href="author.html?name=${
+            encodeURIComponent(article.author)
+          }"
+        >
+          ${esc(article.author)}
+        </a>`
 
-      </span>
+        :
+
+        '<span>هيئة التحرير</span>'
+      }
 
     </div>
 
@@ -2375,10 +2416,169 @@ function openArticleFromHash(){
 
 
 /* =========================================================
+   ARCHIVE PAGES (section / author)
+========================================================= */
+
+async function renderArchivePage(mode){
+
+  const params=
+    new URLSearchParams(
+      location.search
+    );
+
+  const key=
+    (mode==='section'
+      ? params.get('slug')
+      : params.get('name')
+    ) || '';
+
+  const [
+    sections,
+    articles
+  ]=await Promise.all([
+
+    get(
+      'sections',
+      'sort_order',
+      true
+    ),
+
+    get(
+      'articles',
+      'sort_order',
+      true
+    )
+
+  ]);
+
+  const titleTarget=
+    $('#pageTitle');
+
+  const descTarget=
+    $('#pageDesc');
+
+  if(!titleTarget){
+    return;
+  }
+
+  const wanted=
+    key.trim();
+
+  let list=
+    articles.filter(
+      x=>x.visible!==false
+    );
+
+  if(mode==='section'){
+
+    const match=
+      sections.find(
+        s=>s.name===wanted
+      );
+
+    list=list.filter(
+      x=>
+        (x.category||'')
+          .trim()
+          .startsWith(wanted)
+    );
+
+    titleTarget.textContent=
+      match
+        ? match.name
+        : wanted;
+
+    if(descTarget && match){
+      descTarget.textContent=
+        match.description || '';
+    }
+
+    const eyebrow=
+      $('#pageEyebrow');
+
+    if(eyebrow){
+      eyebrow.textContent='قسم';
+    }
+
+  }else{
+
+    list=list.filter(
+      x=>
+        (x.author||'')
+          .trim()===wanted
+    );
+
+    titleTarget.textContent=
+      wanted || 'كاتب';
+
+    const eyebrow=
+      $('#pageEyebrow');
+
+    if(eyebrow){
+      eyebrow.textContent='كاتب';
+    }
+
+  }
+
+  document.title=
+    titleTarget.textContent
+    + ' | ضد السينما';
+
+  const target=
+    $('#pageArticles');
+
+  if(!target){
+    return;
+  }
+
+  if(!list.length){
+
+    target.innerHTML=`
+      <div class="empty">
+        لا توجد مقالات منشورة هنا بعد.
+      </div>
+    `;
+
+    return;
+
+  }
+
+  window.__CC_ARTICLES__=
+    list;
+
+  target.innerHTML=
+    list.map(articleCard)
+      .join('');
+
+  bindArticleClicks(target);
+
+  createArticleReader();
+
+}
+
+/* =========================================================
    MAIN
 ========================================================= */
 
 async function main(){
+
+  const path=
+    location.pathname;
+
+  if(
+    path.endsWith('section.html') ||
+    path.endsWith('author.html')
+  ){
+
+    renderArchivePage(
+      path.endsWith('section.html')
+        ? 'section'
+        : 'author'
+    );
+
+    return;
+
+  }
 
   const [
     issues,
