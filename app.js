@@ -64,15 +64,6 @@ function applyTheme(theme){
         : 'light'
     );
 
-  const button=
-    $('#themeToggle');
-
-  if(button){
-    button.textContent=
-      dark
-        ? 'الوضع النهاري'
-        : 'الوضع الليلي';
-  }
 
 }
 
