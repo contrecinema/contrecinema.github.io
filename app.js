@@ -48,6 +48,110 @@ function safeUrl(url){
 
 
 /* =========================================================
+   THEME (dark / light) + ADMIN SHORTCUT
+========================================================= */
+
+function applyTheme(theme){
+
+  const dark=
+    theme==='dark';
+
+  document.documentElement
+    .setAttribute(
+      'data-theme',
+      dark
+        ? 'dark'
+        : 'light'
+    );
+
+  const button=
+    $('#themeToggle');
+
+  if(button){
+    button.textContent=
+      dark
+        ? 'الوضع النهاري'
+        : 'الوضع الليلي';
+  }
+
+}
+
+
+function toggleTheme(){
+
+  const current=
+    document.documentElement
+      .getAttribute('data-theme');
+
+  const next=
+    current==='dark'
+      ? 'light'
+      : 'dark';
+
+  try{
+    localStorage.setItem(
+      'cc-theme',
+      next
+    );
+  }catch(e){}
+
+  applyTheme(next);
+
+}
+
+
+function initTheme(){
+
+  let stored=null;
+
+  try{
+    stored=
+      localStorage.getItem(
+        'cc-theme'
+      );
+  }catch(e){}
+
+  applyTheme(
+    stored ||
+    (window.matchMedia &&
+     window.matchMedia(
+       '(prefers-color-scheme: dark)'
+     ).matches
+      ? 'dark'
+      : 'light')
+  );
+
+  const button=
+    $('#themeToggle');
+
+  if(button){
+    button.onclick=toggleTheme;
+  }
+
+  document.addEventListener(
+    'keydown',
+    e=>{
+
+      if(
+        e.ctrlKey &&
+        e.shiftKey &&
+        (e.key==='A' || e.key==='a')
+      ){
+
+        e.preventDefault();
+
+        location.href=
+          'cc-control.html';
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =========================================================
    MOBILE MENU
 ========================================================= */
 
@@ -2864,5 +2968,7 @@ async function main(){
 /* =========================================================
    START
 ========================================================= */
+
+initTheme();
 
 main();
