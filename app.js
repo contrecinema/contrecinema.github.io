@@ -1749,6 +1749,16 @@ function openArticle(id){
 
   }
 
+  /*
+    عدّاد القراءات — RPC آمن
+    (لا تحديث مباشر للعموم).
+  */
+
+  db.rpc(
+    'increment_views',
+    {article_id:article.id}
+  ).catch(()=>{});
+
 
   const target=
     document.getElementById(
@@ -2270,8 +2280,8 @@ async function main(){
 
     get(
       'articles',
-      'created_at',
-      false
+      'sort_order',
+      true
     ),
 
     get(
@@ -2332,7 +2342,9 @@ async function main(){
   */
 
   renderArticles(
-    articles
+    articles.filter(
+      x=>x.visible!==false
+    )
   );
 
 

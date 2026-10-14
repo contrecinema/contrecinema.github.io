@@ -1225,188 +1225,202 @@ async function addIssue() {
 
 function articlesUI() {
 
+  const editing =
+    D.editArticle || null;
+
+  const list =
+    D.articles.slice().sort(
+      (a, b) =>
+        (a.sort_order || 0) -
+        (b.sort_order || 0)
+    );
+
+  const imageField = (
+    id,
+    label,
+    note,
+    current
+  ) => `
+    <label class="upload-field">
+      <span>${label}</span>
+      <small>${note}</small>
+      <input
+        id="${id}"
+        type="file"
+        accept="image/*"
+        onchange="showFileName('${id}','${id}Name')"
+      >
+      <small id="${id}Name">
+        ${
+          current
+            ? 'اتركه فارغاً للإبقاء على الصورة الحالية'
+            : 'لم يتم اختيار صورة'
+        }
+      </small>
+      ${
+        current
+          ? `<img class="thumb-current" src="${esc(current)}" alt="">`
+          : ''
+      }
+    </label>
+  `;
+
   return `
 
     <div class="panel article-form-panel">
 
       <h2>
-        إضافة مقال
+        ${
+          editing
+            ? 'تعديل مقال'
+            : 'إضافة مقال'
+        }
       </h2>
 
       <p class="form-note">
         عنوان المقال، الكاتب، القسم،
-        صورة الكاتب، ثلاث صور للمقال
-        ونص المقال.
+        الرابط الثابت (slug)، صورة الكاتب،
+        ثلاث صور للمقال ونص المقال.
       </p>
 
       <div class="form">
 
         <label>
-
           عنوان المقال
-
           <input
             id="atitle"
             type="text"
+            value="${editing ? esc(editing.title) : ''}"
             placeholder="عنوان المقال"
           >
-
         </label>
 
         <label>
-
           اسم الكاتب
-
           <input
             id="aauthor"
             type="text"
+            value="${editing ? esc(editing.author || '') : ''}"
             placeholder="اسم الكاتب"
           >
-
         </label>
 
         <label>
-
           القسم
-
           <input
             id="acat"
             type="text"
+            list="sectionsList"
+            value="${editing ? esc(editing.category || '') : ''}"
             placeholder="مثال: مراجعات"
           >
-
-        </label>
-
-        <label class="upload-field">
-
-          <span>
-            صورة الكاتب
-          </span>
-
-          <input
-            id="authorImage"
-            type="file"
-            accept="image/*"
-            onchange="
-              showFileName(
-                'authorImage',
-                'authorImageName'
-              )
-            "
-          >
-
-          <small id="authorImageName">
-            لم يتم اختيار صورة
-          </small>
-
-        </label>
-
-        <label class="upload-field">
-
-          <span>
-            الصورة الأولى للمقال
-          </span>
-
-          <small>
-            تظهر مباشرة تحت العنوان والكاتب.
-          </small>
-
-          <input
-            id="image1"
-            type="file"
-            accept="image/*"
-            onchange="
-              showFileName(
-                'image1',
-                'image1Name'
-              )
-            "
-          >
-
-          <small id="image1Name">
-            لم يتم اختيار صورة
-          </small>
-
+          <datalist id="sectionsList">
+            ${
+              D.sections
+                .map(
+                  s =>
+                    `<option value="${esc(s.name)}">`
+                )
+                .join('')
+            }
+          </datalist>
         </label>
 
         <label>
+          الرابط الثابت (slug)
+          <input
+            id="aslug"
+            type="text"
+            value="${editing ? esc(editing.slug || '') : ''}"
+            placeholder="يولّد تلقائياً من العنوان إن تُرك فارغاً"
+          >
+        </label>
 
+        <label class="check-field">
+          <input
+            id="avisible"
+            type="checkbox"
+            ${
+              editing
+                ? (editing.visible !== false ? 'checked' : '')
+                : 'checked'
+            }
+          >
           <span>
-            نص المقال
+            ظاهر للزوار
+            (أزل العلامة للإخفاء)
           </span>
+        </label>
 
+        ${imageField(
+          'authorImage',
+          'صورة الكاتب',
+          'تظهر بجانب اسم الكاتب.',
+          editing ? editing.author_image : ''
+        )}
+
+        ${imageField(
+          'image1',
+          'الصورة الأولى للمقال',
+          'تظهر مباشرة تحت العنوان والكاتب.',
+          editing ? editing.image_1 : ''
+        )}
+
+        <label>
+          <span>نص المقال</span>
           <textarea
             id="acontent"
             rows="18"
             placeholder="اكتب نص المقال هنا..."
-          ></textarea>
-
+          >${editing ? esc(editing.content || '') : ''}</textarea>
         </label>
 
-        <label class="upload-field">
+        ${imageField(
+          'image2',
+          'الصورة الثانية للمقال',
+          'ستظهر داخل المقال.',
+          editing ? editing.image_2 : ''
+        )}
 
-          <span>
-            الصورة الثانية للمقال
-          </span>
+        ${imageField(
+          'image3',
+          'الصورة الثالثة للمقال',
+          'ستظهر قرب نهاية المقال.',
+          editing ? editing.image_3 : ''
+        )}
 
-          <small>
-            ستظهر داخل المقال.
-          </small>
+        <div class="form-actions">
 
-          <input
-            id="image2"
-            type="file"
-            accept="image/*"
-            onchange="
-              showFileName(
-                'image2',
-                'image2Name'
-              )
-            "
+          <button
+            class="btn full"
+            id="saveArticleBtn"
+            onclick="${
+              editing
+                ? 'updateArticle()'
+                : 'addArticle()'
+            }"
           >
+            ${
+              editing
+                ? 'حفظ التعديلات'
+                : 'حفظ المقال'
+            }
+          </button>
 
-          <small id="image2Name">
-            لم يتم اختيار صورة
-          </small>
+          ${
+            editing
+              ? `
+                <button
+                  class="btn full secondary"
+                  onclick="cancelEditArticle()"
+                >
+                  إلغاء التعديل
+                </button>
+              `
+              : ''
+          }
 
-        </label>
-
-        <label class="upload-field">
-
-          <span>
-            الصورة الثالثة للمقال
-          </span>
-
-          <small>
-            ستظهر قرب نهاية المقال.
-          </small>
-
-          <input
-            id="image3"
-            type="file"
-            accept="image/*"
-            onchange="
-              showFileName(
-                'image3',
-                'image3Name'
-              )
-            "
-          >
-
-          <small id="image3Name">
-            لم يتم اختيار صورة
-          </small>
-
-        </label>
-
-        <button
-          class="btn full"
-          id="saveArticleBtn"
-          onclick="addArticle()">
-
-          حفظ المقال
-
-        </button>
+        </div>
 
       </div>
 
@@ -1419,84 +1433,105 @@ function articlesUI() {
       </h2>
 
       ${
-        D.articles.length
-
+        list.length
           ?
-
-          D.articles
-            .map(article => `
+          list
+            .map((article, index) => `
 
               <div class="item">
 
                 <div>
 
                   <b>
-                    ${esc(
-                      article.title
-                    )}
+                    ${esc(article.title)}
                   </b>
 
                   <br>
 
                   <small>
-
-                    ${esc(
-                      article.author || ''
-                    )}
-
+                    ${esc(article.author || '')}
                     —
-
-                    ${esc(
-                      article.category || ''
-                    )}
-
+                    ${esc(article.category || '')}
                   </small>
 
                   <br>
 
+                  <span class="badge ${
+                    article.visible !== false
+                      ? 'ok'
+                      : 'hidden'
+                  }">
+                    ${
+                      article.visible !== false
+                        ? 'ظاهر'
+                        : 'مخفي'
+                    }
+                  </span>
+
+                  <span class="badge">
+                    قراءات: ${article.views || 0}
+                  </span>
+
+                  <span class="badge">
+                    ترتيب: ${(article.sort_order || 0) + 1}
+                  </span>
+
                   ${
                     article.image_1
-
-                      ?
-
-                      `
-                        <small>
-                          ✓ صورة المقال
-                        </small>
-                      `
-
-                      :
-
-                      ''
+                      ? '<small> ✓ صورة المقال</small>'
+                      : ''
                   }
 
                 </div>
 
-                <button
-                  class="danger"
-                  onclick="del(
-                    'articles',
-                    '${article.id}'
-                  )">
+                <div class="item-actions">
 
-                  حذف
+                  <button onclick="editArticle('${article.id}')">
+                    تعديل
+                  </button>
 
-                </button>
+                  <button onclick="toggleArticleVisible('${article.id}', ${article.visible !== false})">
+                    ${
+                      article.visible !== false
+                        ? 'إخفاء'
+                        : 'إظهار'
+                    }
+                  </button>
+
+                  <button
+                    onclick="moveArticle('${article.id}', -1)"
+                    ${index === 0 ? 'disabled' : ''}
+                  >
+                    ▲
+                  </button>
+
+                  <button
+                    onclick="moveArticle('${article.id}', 1)"
+                    ${index === list.length - 1 ? 'disabled' : ''}
+                  >
+                    ▼
+                  </button>
+
+                  <button
+                    class="danger"
+                    onclick="del('articles','${article.id}')"
+                  >
+                    حذف
+                  </button>
+
+                </div>
 
               </div>
 
             `)
             .join('')
-
           :
-
           '<p>لا توجد مقالات بعد.</p>'
       }
 
     </div>
 
   `;
-
 }
 
 /* =========================================================
@@ -1534,6 +1569,22 @@ function showFileName(
    ADD ARTICLE
    ========================================================= */
 
+function slugifyTitle(title) {
+
+  return String(title || '')
+    .toLowerCase()
+    .trim()
+    .replace(
+      /[^\p{L}\p{N}]+/gu,
+      '-'
+    )
+    .replace(
+      /^-+|-+$/g,
+      ''
+    );
+
+}
+
 async function addArticle() {
 
   const btn =
@@ -1542,120 +1593,78 @@ async function addArticle() {
   try {
 
     const title =
-      $('atitle')
-        ?.value
-        ?.trim();
+      $('atitle')?.value?.trim();
 
     const author =
-      $('aauthor')
-        ?.value
-        ?.trim();
+      $('aauthor')?.value?.trim();
 
     const category =
-      $('acat')
-        ?.value
-        ?.trim()
-      ||
-      'رؤى سينمائية';
+      $('acat')?.value?.trim()
+      || 'رؤى سينمائية';
 
     const content =
-      $('acontent')
-        ?.value
-        ?.trim();
+      $('acontent')?.value?.trim();
 
     if (!title) {
-
-      alert(
-        'أدخل عنوان المقال.'
-      );
-
+      alert('أدخل عنوان المقال.');
       return;
-
     }
 
     if (!content) {
-
-      alert(
-        'أدخل نص المقال.'
-      );
-
+      alert('أدخل نص المقال.');
       return;
-
     }
 
     if (btn) {
-
       btn.disabled = true;
-
       btn.textContent =
         'جارٍ رفع الصور وحفظ المقال...';
-
     }
 
     const authorImageFile =
-      $('authorImage')
-        ?.files
-        ?.[0]
-      || null;
+      $('authorImage')?.files?.[0] || null;
 
     const image1File =
-      $('image1')
-        ?.files
-        ?.[0]
-      || null;
+      $('image1')?.files?.[0] || null;
 
     const image2File =
-      $('image2')
-        ?.files
-        ?.[0]
-      || null;
+      $('image2')?.files?.[0] || null;
 
     const image3File =
-      $('image3')
-        ?.files
-        ?.[0]
-      || null;
+      $('image3')?.files?.[0] || null;
 
     const authorImage =
-      await upload(
-        'covers',
-        authorImageFile
-      );
+      await upload('covers', authorImageFile);
 
     const image1 =
-      await upload(
-        'covers',
-        image1File
-      );
+      await upload('covers', image1File);
 
     const image2 =
-      await upload(
-        'covers',
-        image2File
-      );
+      await upload('covers', image2File);
 
     const image3 =
-      await upload(
-        'covers',
-        image3File
-      );
+      await upload('covers', image3File);
+
+    const slugInput =
+      $('aslug')?.value?.trim() || '';
 
     const slug =
-      title
-        .toLowerCase()
-        .trim()
-        .replace(
-          /[^\p{L}\p{N}]+/gu,
-          '-'
-        )
-        .replace(
-          /^-+|-+$/g,
-          ''
-        );
-
-    const finalSlug =
-      slug ||
+      slugifyTitle(
+        slugInput || title
+      ) ||
       `article-${Date.now()}`;
+
+    const visible =
+      $('avisible')?.checked === true;
+
+    const nextOrder =
+      D.articles.length
+        ? Math.max(
+            ...D.articles.map(
+              x => x.sort_order || 0
+            )
+          ) + 1
+        : 0;
 
     const {
       error
@@ -1663,39 +1672,22 @@ async function addArticle() {
       .from('articles')
       .insert({
 
-        title:
-          title,
-
-        slug:
-          finalSlug,
-
-        author:
-          author,
-
-        category:
-          category,
-
-        content:
-          content,
-
-        author_image:
-          authorImage,
-
-        image_1:
-          image1,
-
-        image_2:
-          image2,
-
-        image_3:
-          image3
+        title,
+        slug,
+        author,
+        category,
+        content,
+        author_image: authorImage,
+        image_1: image1,
+        image_2: image2,
+        image_3: image3,
+        visible,
+        sort_order: nextOrder
 
       });
 
     if (error) {
-
       throw error;
-
     }
 
     alert(
@@ -1703,7 +1695,6 @@ async function addArticle() {
     );
 
     await load();
-
     show('articles');
 
   } catch (error) {
@@ -1721,15 +1712,277 @@ async function addArticle() {
   } finally {
 
     if (btn) {
-
       btn.disabled = false;
-
-      btn.textContent =
-        'حفظ المقال';
-
+      btn.textContent = 'حفظ المقال';
     }
 
   }
+
+}
+
+async function updateArticle() {
+
+  const btn =
+    $('saveArticleBtn');
+
+  try {
+
+    const editing =
+      D.editArticle;
+
+    if (!editing) {
+      return;
+    }
+
+    const title =
+      $('atitle')?.value?.trim();
+
+    const author =
+      $('aauthor')?.value?.trim();
+
+    const category =
+      $('acat')?.value?.trim()
+      || 'رؤى سينمائية';
+
+    const content =
+      $('acontent')?.value?.trim();
+
+    if (!title) {
+      alert('أدخل عنوان المقال.');
+      return;
+    }
+
+    if (!content) {
+      alert('أدخل نص المقال.');
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent =
+        'جارٍ حفظ التعديلات...';
+    }
+
+    const slugInput =
+      $('aslug')?.value?.trim();
+
+    const slug =
+      slugifyTitle(
+        slugInput || title
+      ) ||
+      `article-${Date.now()}`;
+
+    if (slug !== editing.slug) {
+
+      const { data: dup } = await db
+        .from('articles')
+        .select('id')
+        .eq('slug', slug)
+        .neq('id', editing.id)
+        .maybeSingle();
+
+      if (dup) {
+        throw new Error(
+          'هذا الرابط الثابت مستخدم في مقال آخر.'
+        );
+      }
+
+    }
+
+    /*
+      الغائب يبقى كما هو:
+      الصور تُحدَّث فقط عند اختيار
+      ملف جديد، وإلا تبقى القديمة.
+    */
+
+    const patch = {
+
+      title,
+      author,
+      category,
+      content,
+      slug,
+      visible:
+        $('avisible')?.checked === true
+
+    };
+
+    const authorImageFile =
+      $('authorImage')?.files?.[0] || null;
+
+    const image1File =
+      $('image1')?.files?.[0] || null;
+
+    const image2File =
+      $('image2')?.files?.[0] || null;
+
+    const image3File =
+      $('image3')?.files?.[0] || null;
+
+    const authorImage =
+      await upload('covers', authorImageFile);
+
+    const image1 =
+      await upload('covers', image1File);
+
+    const image2 =
+      await upload('covers', image2File);
+
+    const image3 =
+      await upload('covers', image3File);
+
+    if (authorImage) {
+      patch.author_image = authorImage;
+    }
+
+    if (image1) {
+      patch.image_1 = image1;
+    }
+
+    if (image2) {
+      patch.image_2 = image2;
+    }
+
+    if (image3) {
+      patch.image_3 = image3;
+    }
+
+    const { error } = await db
+      .from('articles')
+      .update(patch)
+      .eq('id', editing.id);
+
+    if (error) {
+      throw error;
+    }
+
+    alert(
+      'تم حفظ التعديلات بنجاح.'
+    );
+
+    D.editArticle = null;
+
+    await load();
+    show('articles');
+
+  } catch (error) {
+
+    console.error(
+      'UPDATE ERROR:',
+      error
+    );
+
+    alert(
+      'تعذر حفظ التعديلات:\n\n' +
+      msgError(error)
+    );
+
+  } finally {
+
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'حفظ التعديلات';
+    }
+
+  }
+
+}
+
+function editArticle(id) {
+
+  D.editArticle =
+    D.articles.find(
+      x => String(x.id) === String(id)
+    ) || null;
+
+  show('articles');
+
+  window.scrollTo({ top: 0 });
+
+}
+
+function cancelEditArticle() {
+
+  D.editArticle = null;
+
+  show('articles');
+
+}
+
+async function toggleArticleVisible(
+  id,
+  currentVisible
+) {
+
+  const nextVisible = !currentVisible;
+
+  const { error } = await db
+    .from('articles')
+    .update({ visible: nextVisible })
+    .eq('id', id);
+
+  if (error) {
+    alert(
+      'تعذر تغيير حالة المقال:\n\n' +
+      msgError(error)
+    );
+    return;
+  }
+
+  await load();
+  show('articles');
+
+}
+
+async function moveArticle(id, dir) {
+
+  const list =
+    D.articles.slice().sort(
+      (a, b) =>
+        (a.sort_order || 0) -
+        (b.sort_order || 0)
+    );
+
+  const i =
+    list.findIndex(
+      x => String(x.id) === String(id)
+    );
+
+  const j = i + dir;
+
+  if (
+    i < 0 ||
+    j < 0 ||
+    j >= list.length
+  ) {
+    return;
+  }
+
+  const a = list[i];
+  const b = list[j];
+
+  const orderA = a.sort_order || 0;
+  const orderB = b.sort_order || 0;
+
+  const { error: e1 } = await db
+    .from('articles')
+    .update({ sort_order: orderB })
+    .eq('id', a.id);
+
+  const { error: e2 } = await db
+    .from('articles')
+    .update({ sort_order: orderA })
+    .eq('id', b.id);
+
+  if (e1 || e2) {
+    alert(
+      'تعذر تغيير الترتيب:\n\n' +
+      msgError(e1 || e2)
+    );
+  }
+
+  await load();
+  show('articles');
 
 }
 
