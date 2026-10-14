@@ -510,6 +510,27 @@ function renderSections(items){
    ARTICLE CARD
 ========================================================= */
 
+function viewsLabel(n){
+
+  const v=Number(n)||0;
+
+  if(v===1){
+    return 'قراءة واحدة';
+  }
+
+  if(v===2){
+    return 'قراءتان';
+  }
+
+  if(v<=10){
+    return v+' قراءات';
+  }
+
+  return v+' قراءة';
+
+}
+
+
 function articleCard(x){
 
   const image=
@@ -593,6 +614,10 @@ function articleCard(x){
 
           ''
         }
+
+      <small class="views">
+        ${viewsLabel(x.views)}
+      </small>
 
       </div>
 
@@ -2116,9 +2141,15 @@ function openArticle(id){
         class="cc-article-date"
       >
 
-        ${formatArticleDate(
-          article.created_at
-        )}
+        <span>
+          ${formatArticleDate(
+            article.created_at
+          )}
+        </span>
+
+        <span class="views">
+          ${viewsLabel(article.views)}
+        </span>
 
       </div>
       `
