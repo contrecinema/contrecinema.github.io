@@ -1847,7 +1847,23 @@ function openArticle(id){
       'increment_views',
       {article_id:article.id}
     )
-  ).catch(()=>{});
+  )
+    .then(()=>{
+
+      const badge=
+        document.querySelector(
+          '.cc-article-date .views'
+        );
+
+      if(badge){
+        badge.textContent=
+          viewsLabel(
+            (Number(article.views)||0)+1
+          );
+      }
+
+    })
+    .catch(()=>{});
 
 
   const target=
