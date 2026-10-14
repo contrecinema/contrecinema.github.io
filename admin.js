@@ -1223,6 +1223,17 @@ async function addIssue() {
    ARTICLES UI
    ========================================================= */
 
+/*
+   خطوط متاحة للمقالات
+*/
+const FONT_OPTIONS = [
+  'IBM Plex Sans Arabic',
+  'Noto Naskh Arabic',
+  'Cairo',
+  'Tajawal',
+  'Amiri'
+];
+
 function articlesUI() {
 
   const editing =
@@ -1367,13 +1378,51 @@ function articlesUI() {
         )}
 
         <label>
-          <span>نص المقال</span>
-          <textarea
-            id="acontent"
-            rows="18"
-            placeholder="اكتب نص المقال هنا..."
-          >${editing ? esc(editing.content || '') : ''}</textarea>
+          خط المقال
+          <select id="afont">
+            ${
+              FONT_OPTIONS.map(f =>
+                `<option value="${f}" ${
+                  editing && editing.font_family === f
+                    ? 'selected'
+                    : ''
+                }>${f}</option>`
+              ).join('')
+            }
+          </select>
         </label>
+
+        <div class="fmt-head">
+          نص المقال
+        </div>
+
+        <div class="fmt-bar">
+          <button type="button" onclick="wrapSel('**','**')" title="عريض">
+            <b>غليظ</b>
+          </button>
+          <button type="button" onclick="wrapSel('## ','  ')" title="عنوان فرعي">
+            عنوان
+          </button>
+          <button type="button" onclick="wrapSel('> ','  ')" title="اقتباس">
+            ❝ اقتباس
+          </button>
+          <span class="fmt-hint">
+            حدّد النص ثم اضغط الزر — **عريض** · ## عنوان · > اقتباس
+          </span>
+        </div>
+
+        <textarea
+          id="acontent"
+          rows="18"
+          placeholder="اكتب نص المقال هنا..."
+          oninput="updateArticlePreview()"
+        >${editing ? esc(editing.content || '') : ''}</textarea>
+
+        <div class="pv-head">معاينة</div>
+        <div id="articlePreviewBox" class="pv-box"></div>
+        <script>
+          requestAnimationFrame(updateArticlePreview);
+        <\/script>
 
         ${imageField(
           'image2',
@@ -1657,6 +1706,9 @@ async function addArticle() {
     const visible =
       $('avisible')?.checked === true;
 
+    const fontFamily =
+      $('afont')?.value || null;
+
     const nextOrder =
       D.articles.length
         ? Math.max(
@@ -1682,7 +1734,8 @@ async function addArticle() {
         image_2: image2,
         image_3: image3,
         visible,
-        sort_order: nextOrder
+        sort_order: nextOrder,
+        font_family: fontFamily
 
       });
 
@@ -1803,7 +1856,10 @@ async function updateArticle() {
       content,
       slug,
       visible:
-        $('avisible')?.checked === true
+        $('avisible')?.checked === true,
+
+      font_family:
+        $('afont')?.value || null
 
     };
 
@@ -1885,6 +1941,112 @@ async function updateArticle() {
     }
 
   }
+
+}
+
+function wrapSel(before, after) {
+
+  const area =
+    $('acontent');
+
+  if (!area) {
+    return;
+  }
+
+  const start =
+    area.selectionStart;
+
+  const end =
+    area.selectionEnd;
+
+  const selected =
+    area.value.slice(start, end);
+
+  area.setRangeText(
+    before + selected + after,
+    start,
+    end,
+    'end'
+  );
+
+  area.focus();
+
+  updateArticlePreview();
+
+}
+
+function updateArticlePreview() {
+
+  const box =
+    $('articlePreviewBox');
+
+  const area =
+    $('acontent');
+
+  if (!box || !area) {
+    return;
+  }
+
+  box.innerHTML =
+    renderPreviewText(area.value);
+
+}
+
+function renderPreviewText(content) {
+
+  if (!content) {
+    return '<p>لا يوجد نص بعد.</p>';
+  }
+
+  return String(content)
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map(
+      paragraph => `
+
+        <p>
+          ${
+            paragraph
+              .split('\n')
+              .map(line => {
+
+                let safe = esc(line);
+
+                if (/^##[ \t]+/.test(line)) {
+
+                  safe = safe
+                    .replace(
+                      /^##[ \t]+(.*)$/,
+                      '<span class="pv-h">$1</span>'
+                    );
+
+                } else if (
+                  /^>[ \t]?/.test(line) &&
+                  line.trim()
+                ) {
+
+                  safe = safe
+                    .replace(
+                      /^&gt;[ \t]?(.*)$/,
+                      '<span class="pv-q">$1</span>'
+                    );
+
+                }
+
+                return safe;
+
+              })
+              .join('<br>')
+              .replace(
+                /\*\*([^*]+)\*\*/g,
+                '<strong>$1</strong>'
+              )
+          }
+        </p>
+
+      `
+    )
+    .join('');
 
 }
 

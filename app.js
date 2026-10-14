@@ -1182,6 +1182,22 @@ function addArticleReaderStyles(){
     }
 
 
+    .cc-article-body .cc-h{
+      margin:38px 0 14px;
+      font-size:24px;
+      font-weight:800;
+      color:#111;
+    }
+
+    .cc-article-body blockquote{
+      margin:24px 0;
+      padding:14px 22px;
+      border-right:4px solid #a40000;
+      background:#faf7f2;
+      font-size:.95em;
+      color:#444;
+    }
+
     .cc-article-image{
       width:100%;
       margin:
@@ -1385,6 +1401,53 @@ function articleParagraphs(
 /* =========================================================
    ARTICLE IMAGE
 ========================================================= */
+
+/*
+  تنسيق نص المقال:
+  escape أولاً ثم رموز بسيطة
+  **عريض** / ## عنوان / > اقتباس
+*/
+
+function formatArticleText(text){
+
+  return String(text??'')
+    .replace(/\r\n/g,'\n')
+    .split('\n')
+    .map(line=>{
+
+      const safe=esc(line);
+
+      if(/^##[ \t]+/.test(line)){
+
+        return safe.replace(
+          /^##[ \t]+(.*)$/,
+          '<h3 class="cc-h">$1</h3>'
+        );
+
+      }
+
+      if(/^>[ \t]?/.test(line)&&line.trim()){
+
+        return safe.replace(
+          /^&gt;[ \t]?(.*)$/,
+          '<blockquote>$1</blockquote>'
+        );
+
+      }
+
+      return safe;
+
+    })
+    .map(line=>
+      line.replace(
+        /\*\*([^*]+)\*\*/g,
+        '<strong>$1</strong>'
+      )
+    )
+    .join('<br>');
+
+}
+
 
 function articleImage(
   url,
@@ -1754,9 +1817,11 @@ function openArticle(id){
     (لا تحديث مباشر للعموم).
   */
 
-  db.rpc(
-    'increment_views',
-    {article_id:article.id}
+  Promise.resolve(
+    db.rpc(
+      'increment_views',
+      {article_id:article.id}
+    )
   ).catch(()=>{});
 
 
@@ -1877,8 +1942,19 @@ function openArticle(id){
 
       body+=`
 
-        <p>
-          ${esc(paragraph)}
+        <p
+          class="cc-p"
+          ${
+            article.font_family
+              ?
+              `style="font-family:'${esc(
+                article.font_family
+              )}','IBM Plex Sans Arabic',sans-serif"`
+              :
+              ''
+          }
+        >
+          ${formatArticleText(paragraph)}
         </p>
 
       `;

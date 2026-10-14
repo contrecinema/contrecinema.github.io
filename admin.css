@@ -14,3 +14,16 @@
 .badge.ok{background:#eef6ee;color:#2f7d32;border-color:#cfe4cf}
 .badge.hidden{background:#efefef;color:#777}
 .thumb-current{width:56px;height:56px;object-fit:cover;border:1px solid var(--line);border-radius:6px;display:block;margin-top:6px}
+.fmt-head{margin:16px 0 4px;font-size:14px;font-weight:700;color:var(--ink)}
+.fmt-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.fmt-bar button{padding:7px 12px;border:1px solid var(--line);background:#fff;font-size:13px;color:var(--ink)}
+.fmt-bar button:hover{border-color:var(--red);color:var(--red)}
+.fmt-hint{font-size:12px;color:var(--muted)}
+.pv-head{margin:14px 0 6px;font-size:13px;font-weight:700;color:var(--muted)}
+.pv-box{border:1px dashed var(--line);background:#faf8f4;padding:18px 22px;min-height:90px;font-size:16px;line-height:2;color:#333}
+.pv-box p{margin:0 0 18px}
+.pv-box p:last-child{margin-bottom:0}
+.pv-box .pv-h{display:block;margin:16px 0 8px;font-size:20px;font-weight:800;color:#171717}
+.pv-box .pv-q{display:block;margin:12px 0;padding:8px 14px;border-right:4px solid var(--red);background:#f4f1ec;color:#555}
+.pv-box strong{font-weight:800}
+.fmt-bar button b{font-weight:800}
