@@ -2890,6 +2890,25 @@ function settingsUI() {
           placeholder="رابط صورة الواجهة"
         >
 
+        <label class="color-field">
+          <span>لون العلامة (الأحمر)</span>
+          <input
+            id="accentColor"
+            type="color"
+            value="${esc(
+              s.accent_color || '#a91618'
+            )}"
+          >
+        </label>
+
+        <input
+          id="footerNote"
+          value="${esc(
+            s.footer_note || ''
+          )}"
+          placeholder="عبارة أسفل الموقع"
+        >
+
         <select
           id="currentIssue"
         >
@@ -3003,7 +3022,17 @@ async function saveSettings() {
       current_issue_id:
         $('currentIssue')
           ?.value
-          || null
+        || null,
+
+      accent_color:
+        $('accentColor')
+          ?.value
+        || null,
+
+      footer_note:
+        $('footerNote')
+          ?.value
+        || null
 
     });
 

@@ -27,3 +27,6 @@
 .pv-box .pv-q{display:block;margin:12px 0;padding:8px 14px;border-right:4px solid var(--red);background:#f4f1ec;color:#555}
 .pv-box strong{font-weight:800}
 .fmt-bar button b{font-weight:800}
+.color-field{display:flex;align-items:center;gap:12px;margin:10px 0}
+.color-field span{font-size:13px;color:var(--muted)}
+.color-field input{width:52px;height:36px;padding:2px;border:1px solid var(--line);background:#fff;cursor:pointer}

@@ -2813,6 +2813,30 @@ async function main(){
   }
 
 
+  if(settings){
+
+    if(settings.accent_color){
+      document.documentElement
+        .style
+        .setProperty(
+          '--red',
+          settings.accent_color
+        );
+    }
+
+    const footNote=
+      $('#footNote');
+
+    if(
+      footNote &&
+      settings.footer_note
+    ){
+      footNote.textContent=
+        settings.footer_note;
+    }
+
+  }
+
   /*
     Create reader now so the first
     article opens instantly.
