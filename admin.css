@@ -64,14 +64,4 @@ html[data-theme="dark"] .login-box{box-shadow:0 15px 50px #00000060}
 html[data-theme="dark"] .theme-toggle .i-sun{opacity:0;transform:rotate(70deg) scale(.85)}
 html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0) scale(1)}
 .head-side{display:flex;align-items:center;gap:12px}
-.login-theme-toggle{
-  width:42px;height:42px;padding:0;border-radius:50%;margin:0 auto 12px;
-  display:grid;place-items:center;position:relative;
-  background:none;border:1px solid var(--line);color:var(--ink);cursor:pointer;
-}
-.login-theme-toggle svg{width:19px;height:19px;position:absolute;transition:opacity .22s ease,transform .22s ease}
-.login-theme-toggle .i-sun{opacity:1;transform:rotate(0) scale(1)}
-.login-theme-toggle .i-moon{opacity:0;transform:rotate(-70deg) scale(.85)}
-html[data-theme="dark"] .login-theme-toggle .i-sun{opacity:0;transform:rotate(70deg) scale(.85)}
-html[data-theme="dark"] .login-theme-toggle .i-moon{opacity:1;transform:rotate(0) scale(1)}
 .login-box .logo-img{margin-bottom:0}
