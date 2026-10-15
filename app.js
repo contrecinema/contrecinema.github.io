@@ -1232,7 +1232,11 @@ function addArticleReaderStyles(){
       width:100%;
       padding:
         70px
-        70px
+        clamp(
+          24px,
+          7vw,
+          70px
+        )
         100px;
     }
 
@@ -1351,9 +1355,22 @@ function addArticleReaderStyles(){
     }
 
 
+    /*
+      تنضيد المتن:
+      سقف مقياس 34em متسق عبر الشاشات
+      + شد عربي بالنقاط المرنة المتاحة للمتصفح (فراغات، inter-word)
+      + كسر أسطر محسّن (pretty) حيث تدعمه المحركات.
+    */
+
     .cc-article-body p{
       margin:
         0 0 26px;
+      max-inline-size:34em;
+      margin-inline:auto;
+      text-align:justify;
+      text-align-last:start;
+      text-justify:inter-word;
+      text-wrap:pretty;
     }
 
 
@@ -1621,7 +1638,11 @@ function formatArticleText(text){
         '<strong>$1</strong>'
       )
     )
-    .join('<br>');
+    /*
+      الأسطر داخل الفقرة تُدمج بفراغ (كسر مرن)
+      بدل <br> إجباري.
+    */
+    .join(' ');
 
 }
 
