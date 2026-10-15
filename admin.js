@@ -782,6 +782,12 @@ function show(tab) {
     workspace.innerHTML =
       views[tab]();
 
+    if (tab === 'articles') {
+
+      updateArticlePreview();
+
+    }
+
   }
 
 }
@@ -1379,7 +1385,7 @@ function articlesUI() {
 
         <label>
           خط المقال
-          <select id="afont">
+          <select id="afont" onchange="updateArticlePreview()">
             ${
               FONT_OPTIONS.map(f =>
                 `<option value="${f}" ${
@@ -1420,9 +1426,6 @@ function articlesUI() {
 
         <div class="pv-head">معاينة</div>
         <div id="articlePreviewBox" class="pv-box"></div>
-        <script>
-          requestAnimationFrame(updateArticlePreview);
-        <\/script>
 
         ${imageField(
           'image2',
@@ -1989,6 +1992,15 @@ function updateArticlePreview() {
 
   box.innerHTML =
     renderPreviewText(area.value);
+
+
+  const font =
+    $('afont')?.value;
+
+  box.style.fontFamily =
+    font
+      ? `'${font}','IBM Plex Sans Arabic',sans-serif`
+      : '';
 
 }
 
@@ -3111,7 +3123,9 @@ async function del(
           ? 'sections'
           : table === 'team'
             ? 'team'
-            : 'dashboard';
+            : table === 'editors'
+              ? 'editors'
+              : 'dashboard';
 
   show(tab);
 

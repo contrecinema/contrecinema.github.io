@@ -306,6 +306,29 @@ function renderIssues(items){
   }
 
 
+  const range =
+    $('#issuesRange');
+
+  if(range && items.length){
+
+    const nums =
+      items
+        .map(x=>Number(x.issue_number))
+        .filter(n=>!Number.isNaN(n));
+
+    if(nums.length){
+
+      range.textContent =
+        'من العدد ' +
+        Math.min(...nums) +
+        ' إلى العدد ' +
+        Math.max(...nums);
+
+    }
+
+  }
+
+
   target.innerHTML=
     items.map(x=>`
 
@@ -1257,7 +1280,7 @@ function addArticleReaderStyles(){
 
 
     .cc-author-link{
-      color:#a40000;
+      color:var(--reader-accent);
       font-weight:700;
       text-decoration:none;
     }
@@ -1335,13 +1358,15 @@ function addArticleReaderStyles(){
 
 
     .cc-article-body .cc-h{
+      display:block;
       margin:38px 0 14px;
       font-size:24px;
       font-weight:800;
       color:var(--reader-ink);
     }
 
-    .cc-article-body blockquote{
+    .cc-article-body .cc-quote{
+      display:block;
       margin:24px 0;
       padding:14px 22px;
       border-right:4px solid var(--red);
@@ -1443,8 +1468,8 @@ function addArticleReaderStyles(){
 
 
     .cc-share-btn.is-done{
-      border-color:#a91618;
-      background:#a91618;
+      border-color:var(--red);
+      background:var(--red);
       color:#fff;
     }
 
@@ -1573,7 +1598,7 @@ function formatArticleText(text){
 
         return safe.replace(
           /^##[ \t]+(.*)$/,
-          '<h3 class="cc-h">$1</h3>'
+          '<span class="cc-h">$1</span>'
         );
 
       }
@@ -1582,7 +1607,7 @@ function formatArticleText(text){
 
         return safe.replace(
           /^&gt;[ \t]?(.*)$/,
-          '<blockquote>$1</blockquote>'
+          '<span class="cc-quote">$1</span>'
         );
 
       }
@@ -1642,6 +1667,7 @@ function articleLink(id){
   return (
     location.origin +
     location.pathname +
+    location.search +
     '#article-' +
     encodeURIComponent(id)
   );
@@ -2529,7 +2555,8 @@ async function renderArchivePage(mode){
 
   const [
     sections,
-    articles
+    articles,
+    settings
   ]=await Promise.all([
 
     get(
@@ -2542,7 +2569,19 @@ async function renderArchivePage(mode){
       'articles',
       'sort_order',
       true
-    )
+    ),
+
+    db
+      .from('settings')
+      .select('*')
+      .eq('id',true)
+      .maybeSingle()
+      .then(
+        r=>r.data||null
+      )
+      .catch(
+        ()=>null
+      )
 
   ]);
 
@@ -2649,7 +2688,51 @@ async function renderArchivePage(mode){
 
   createArticleReader();
 
+  applySiteSettings(
+    settings
+  );
+
+  openArticleFromHash();
+
+  window.addEventListener(
+    'hashchange',
+    openArticleFromHash
+  );
+
 }
+
+/* =========================================================
+   SITE SETTINGS (accent + footer) — all pages
+========================================================= */
+
+function applySiteSettings(settings){
+
+  if(!settings){
+    return;
+  }
+
+  if(settings.accent_color){
+    document.documentElement
+      .style
+      .setProperty(
+        '--red',
+        settings.accent_color
+      );
+  }
+
+  const footNote=
+    $('#footNote');
+
+  if(
+    footNote &&
+    settings.footer_note
+  ){
+    footNote.textContent=
+      settings.footer_note;
+  }
+
+}
+
 
 /* =========================================================
    MAIN
@@ -2908,29 +2991,7 @@ async function main(){
   }
 
 
-  if(settings){
-
-    if(settings.accent_color){
-      document.documentElement
-        .style
-        .setProperty(
-          '--red',
-          settings.accent_color
-        );
-    }
-
-    const footNote=
-      $('#footNote');
-
-    if(
-      footNote &&
-      settings.footer_note
-    ){
-      footNote.textContent=
-        settings.footer_note;
-    }
-
-  }
+  applySiteSettings(settings);
 
   /*
     Create reader now so the first
