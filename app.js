@@ -781,9 +781,9 @@ function renderArticles(items){
 
   target.innerHTML=
     items
-      .slice(0,9)
       .map(articleCard)
       .join('');
+
 
 
   /*
