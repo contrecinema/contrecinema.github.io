@@ -8,10 +8,10 @@
    ========================================================= */
 
 const SUPABASE_URL =
-  'https://qclqyqjxsnnhlnlhjybo.supabase.co';
+  'https://icbfpfrzvdfmgunzlduu.supabase.co';
 
 const SUPABASE_KEY =
-  'sb_publishable_poEM-eY7byTT2UBEwZMLmQ_GGUWLnfm';
+  'sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 
 const db = supabase.createClient(
   SUPABASE_URL,
