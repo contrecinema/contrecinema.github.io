@@ -7,6 +7,23 @@ const db=supabase.createClient(
 );
 
 
+/* صور الأعداد والمقالات ما زالت على مشروع التخزين السابق (محجوب مؤقتاً).
+   نُخفي أيقونة الصورة المكسورة؛ كل حاويات الصور لها خلفية في style.css */
+addEventListener('error',e=>{
+
+  const el=e.target;
+
+  if(el&&el.tagName==='IMG'&&!el.dataset.broken){
+
+    el.dataset.broken='1';
+
+    el.style.display='none';
+
+  }
+
+},true);
+
+
 /* =========================================================
    HELPERS
 ========================================================= */
