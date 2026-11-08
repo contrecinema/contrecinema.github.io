@@ -184,3 +184,63 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
     font-size: 17px;
   }
 }
+
+/* ============ تصغير غلاف العدد الحالي ============ */
+
+/* الكمبيوتر */
+.current-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 35px;
+  align-items: start;
+}
+
+.current-cover {
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
+.current-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.placeholder-cover {
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 3 / 4;
+}
+
+/* الهاتف واللوحيات */
+@media (max-width: 900px) {
+  .current-grid {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+
+  .current-cover {
+    width: 65%;
+    max-width: 260px;
+    margin: 0 auto;
+  }
+
+  .placeholder-cover {
+    min-height: 0;
+  }
+}
+
+/* الهواتف الصغيرة */
+@media (max-width: 560px) {
+  .current-cover {
+    width: 72%;
+    max-width: 230px;
+  }
+
+  .current-info h3 {
+    font-size: 30px;
+  }
+}
