@@ -183,3 +183,59 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
     font-size: 17px;
   }
 }
+
+/* ============ تأطير النص أسفل الفيديو ============ */
+
+.hero {
+  display: block;
+  min-height: auto;
+  border-bottom: none;
+  padding: 0;
+}
+
+.hero-copy {
+  padding: 0;
+}
+
+.hero-text-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-top: none;
+  padding: 28px 34px 24px;
+}
+
+.hero-text-panel .kicker {
+  font-size: 14px;
+}
+
+.hero-text-panel h1 {
+  margin: 12px 0;
+}
+
+.hero-text-panel p {
+  margin-bottom: 0;
+}
+
+.hero-actions {
+  margin-top: 0;
+  padding: 18px 0 28px;
+}
+
+@media (max-width: 560px) {
+  .hero-text-panel {
+    padding: 20px 18px 18px;
+  }
+
+  .hero-text-panel h1 {
+    font-size: 36px;
+    margin: 10px 0;
+  }
+
+  .hero-text-panel p {
+    font-size: 16px;
+  }
+
+  .hero-actions {
+    padding: 15px 0 22px;
+  }
+}
