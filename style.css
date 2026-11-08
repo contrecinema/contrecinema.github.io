@@ -185,62 +185,49 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   }
 }
 
-/* ============ تصغير غلاف العدد الحالي ============ */
+/* تصغير غلاف العدد الحالي */
 
-/* الكمبيوتر */
 .current-grid {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 35px;
-  align-items: start;
+  grid-template-columns: 1fr !important;
+  gap: 25px !important;
 }
 
-.current-cover {
-  width: 100%;
-  min-height: 0;
-  aspect-ratio: 3 / 4;
+.current-grid .current-cover {
+  width: 220px !important;
+  max-width: 220px !important;
+  min-height: 0 !important;
+  aspect-ratio: 3 / 4 !important;
+  margin: 0 auto !important;
   overflow: hidden;
 }
 
-.current-cover img {
-  width: 100%;
-  height: 100%;
+.current-grid .current-cover img {
+  width: 100% !important;
+  height: 100% !important;
   object-fit: cover;
-  display: block;
 }
 
-.placeholder-cover {
-  width: 100%;
-  min-height: 0;
+.current-grid .placeholder-cover {
+  min-height: 0 !important;
   aspect-ratio: 3 / 4;
 }
 
-/* الهاتف واللوحيات */
-@media (max-width: 900px) {
-  .current-grid {
-    grid-template-columns: 1fr;
-    gap: 25px;
-  }
-
-  .current-cover {
-    width: 65%;
-    max-width: 260px;
-    margin: 0 auto;
-  }
-
-  .placeholder-cover {
-    min-height: 0;
+/* الهاتف */
+@media (max-width: 560px) {
+  .current-grid .current-cover {
+    width: 190px !important;
+    max-width: 190px !important;
   }
 }
 
-/* الهواتف الصغيرة */
-@media (max-width: 560px) {
-  .current-cover {
-    width: 72%;
-    max-width: 230px;
+/* الكمبيوتر */
+@media (min-width: 901px) {
+  .current-grid {
+    grid-template-columns: 250px 1fr !important;
   }
 
-  .current-info h3 {
-    font-size: 30px;
+  .current-grid .current-cover {
+    width: 250px !important;
+    max-width: 250px !important;
   }
 }
