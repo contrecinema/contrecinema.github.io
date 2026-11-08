@@ -108,31 +108,79 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   padding: 20px 0;
 }
 
-/* ============ تنسيق قسم الأعداد (تمرير أفقي يمين ويسار تماماً مثل الصورة) ============ */
+
+/* ============ أرشيف الأعداد - شريط أفقي ============ */
+
 .issues-grid {
   display: flex !important;
   flex-wrap: nowrap !important;
+  direction: rtl;
   overflow-x: auto !important;
-  gap: 16px !important;
-  padding-bottom: 15px;
+  overflow-y: hidden;
+  gap: 22px;
+  padding: 5px 2px 18px;
   scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-}
-
-.issues-grid .issue-card {
-  flex: 0 0 210px !important;
-  min-width: 210px !important;
-  scroll-snap-align: start;
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
 }
 
 .issues-grid::-webkit-scrollbar {
-  height: 6px;
+  display: none;
 }
-.issues-grid::-webkit-scrollbar-track {
-  background: var(--line);
-  border-radius: 4px;
+
+.issues-grid .issue-card {
+  flex: 0 0 190px !important;
+  min-width: 0 !important;
+  scroll-snap-align: start;
+  transition: transform .25s ease;
 }
-.issues-grid::-webkit-scrollbar-thumb {
-  background: var(--muted);
-  border-radius: 4px;
+
+.issues-grid .issue-card:hover {
+  transform: translateY(-4px);
+}
+
+.issues-grid .issue-cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
+.issues-grid .issue-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.issues-grid .issue-body {
+  padding: 12px;
+}
+
+.issues-grid .issue-body strong {
+  font-size: 19px;
+}
+
+.issues-grid .issue-body p {
+  font-size: 12px;
+}
+
+/* الهاتف */
+@media (max-width: 560px) {
+  .issues-grid {
+    gap: 14px;
+  }
+
+  .issues-grid .issue-card {
+    flex: 0 0 42% !important;
+  }
+
+  .issues-grid .issue-body {
+    padding: 9px;
+  }
+
+  .issues-grid .issue-body strong {
+    font-size: 17px;
+  }
 }
