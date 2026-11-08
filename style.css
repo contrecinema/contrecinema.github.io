@@ -72,7 +72,7 @@ html[data-theme="dark"] .hero-note{
 html[data-theme="dark"] .theme-toggle .i-sun{opacity:0;transform:rotate(70deg) scale(.85)}
 html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) scale(1)}
 
-/* ============ تنسيق شريط الفيديو السينمائي وصندوق النصوص الملاصق ============ */
+/* ============ تنسيق الفيديو السينمائي ============ */
 .hero-video-container {
   width: min(1180px, calc(100% - 40px));
   margin: 15px auto 0 auto;
@@ -106,4 +106,33 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   border-bottom: none;
   min-height: auto;
   padding: 20px 0;
+}
+
+/* ============ تنسيق قسم الأعداد (تمرير أفقي يمين ويسار تماماً مثل الصورة) ============ */
+.issues-grid {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  gap: 16px !important;
+  padding-bottom: 15px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.issues-grid .issue-card {
+  flex: 0 0 210px !important;
+  min-width: 210px !important;
+  scroll-snap-align: start;
+}
+
+.issues-grid::-webkit-scrollbar {
+  height: 6px;
+}
+.issues-grid::-webkit-scrollbar-track {
+  background: var(--line);
+  border-radius: 4px;
+}
+.issues-grid::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 4px;
 }
