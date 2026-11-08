@@ -127,3 +127,20 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   left: 0;
   right: 0;
 }
+.hero-video-container {
+  width: min(1180px, calc(100% - 40px));
+  margin: 10px auto 15px auto; /* تقليص المسافة العلوية والسفلية بشكل كبير */
+  height: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  background-color: #000;
+  border: 1px solid var(--line);
+}
+
+.hero-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
