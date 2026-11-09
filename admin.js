@@ -1,3 +1,4 @@
+
 /* =========================================================
    CONTRE CINÉMA
    ADMIN.JS
@@ -1993,7 +1994,6 @@ function updateArticlePreview() {
   box.innerHTML =
     renderPreviewText(area.value);
 
-
   const font =
     $('afont')?.value;
 
@@ -2617,6 +2617,12 @@ function editorsUI() {
           'اللقب'
         )}
 
+        <textarea
+          id="ebio"
+          rows="4"
+          placeholder="نبذة تعريفية عن المحرر"
+        ></textarea>
+
         <label class="upload-field">
 
           <span>
@@ -2710,6 +2716,23 @@ function editorsUI() {
                     )}
                   </b>
 
+                  ${
+                    editor.bio
+
+                      ?
+
+                      `
+                        <br>
+                        <small>
+                          ${esc(editor.bio)}
+                        </small>
+                      `
+
+                      :
+
+                      ''
+                  }
+
                 </div>
 
                 <button
@@ -2745,73 +2768,91 @@ function editorsUI() {
 
 async function addEditor() {
 
-  const name =
-    $('ename')
-      ?.value
-      ?.trim();
+  try {
 
-  if (!name) {
+    const name =
+      $('ename')
+        ?.value
+        ?.trim();
 
-    alert(
-      'أدخل الاسم.'
-    );
+    if (!name) {
 
-    return;
+      alert(
+        'أدخل الاسم.'
+      );
 
-  }
+      return;
 
-  const photo =
-    await upload(
-      'covers',
-      $('ephoto')
-        ?.files
-        ?.[0]
-      || null
-    );
+    }
 
-  const {
-    error
-  } = await db
-    .from('editors')
-    .insert({
+    const photo =
+      await upload(
+        'covers',
+        $('ephoto')
+          ?.files
+          ?.[0]
+        || null
+      );
 
-      name:
-        name,
+    const {
+      error
+    } = await db
+      .from('editors')
+      .insert({
 
-      surname:
-        $('esurname')
-          ?.value
-          ?.trim()
-        || '',
+        name:
+          name,
 
-      image_url:
-        photo,
-
-      sort_order:
-        Number(
-          $('esort')
+        surname:
+          $('esurname')
             ?.value
-        ) || 0
+            ?.trim()
+          || '',
 
-    });
+        bio:
+          $('ebio')
+            ?.value
+            ?.trim()
+          || '',
 
-  if (error) {
+        image_url:
+          photo,
+
+        sort_order:
+          Number(
+            $('esort')
+              ?.value
+          ) || 0
+
+      });
+
+    if (error) {
+
+      throw error;
+
+    }
 
     alert(
+      'تم حفظ المحرر.'
+    );
+
+    await load();
+
+    show('editors');
+
+  } catch (error) {
+
+    console.error(
+      'ADD EDITOR ERROR:',
+      error
+    );
+
+    alert(
+      'تعذر حفظ المحرر:\n\n' +
       msgError(error)
     );
 
-    return;
-
   }
-
-  alert(
-    'تم حفظ المحرر.'
-  );
-
-  await load();
-
-  show('editors');
 
 }
 
