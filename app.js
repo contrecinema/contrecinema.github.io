@@ -81,7 +81,6 @@ function applyTheme(theme){
         : 'light'
     );
 
-
 }
 
 
@@ -322,7 +321,6 @@ function renderIssues(items){
     return;
   }
 
-
   const range =
     $('#issuesRange');
 
@@ -345,7 +343,6 @@ function renderIssues(items){
 
   }
 
-
   target.innerHTML=
     items.map(x=>`
 
@@ -358,7 +355,6 @@ function renderIssues(items){
           ${cover(x,true)}
 
         </div>
-
 
         <div class="issue-body">
 
@@ -380,7 +376,6 @@ function renderIssues(items){
             }
           </strong>
 
-
           <p>
 
             ${esc(
@@ -400,7 +395,6 @@ function renderIssues(items){
             }
 
           </p>
-
 
           <div class="issue-links">
 
@@ -430,7 +424,6 @@ function renderIssues(items){
               </span>
               `
             }
-
 
             <a
               class="mini"
@@ -463,7 +456,6 @@ function renderCurrent(x){
     return;
   }
 
-
   if(!x){
 
     target.innerHTML=`
@@ -479,12 +471,10 @@ function renderCurrent(x){
 
   }
 
-
   const image=
     safeUrl(
       x.cover_image
     );
-
 
   target.innerHTML=`
 
@@ -517,7 +507,6 @@ function renderCurrent(x){
 
     </div>
 
-
     <div class="current-info">
 
       <div class="num">
@@ -527,7 +516,6 @@ function renderCurrent(x){
 
       </div>
 
-
       <h3>
 
         ${esc(
@@ -536,7 +524,6 @@ function renderCurrent(x){
         )}
 
       </h3>
-
 
       <p>
 
@@ -552,14 +539,12 @@ function renderCurrent(x){
 
       </p>
 
-
       <p>
 
         تصفح العدد، واقرأ ملفاتنا
         ومراجعاتنا وحواراتنا السينمائية.
 
       </p>
-
 
       ${
         x.pdf_url
@@ -606,7 +591,6 @@ function renderSections(items){
     return;
   }
 
-
   const a=
     items.length
     ?
@@ -625,7 +609,6 @@ function renderSections(items){
       })
     );
 
-
   target.innerHTML=
     a.map(x=>`
 
@@ -639,7 +622,6 @@ function renderSections(items){
         <b>
           ${esc(x.name)}
         </b>
-
 
         <p>
 
@@ -689,12 +671,10 @@ function articleCard(x){
       x.image_1
     );
 
-
   const authorImage=
     safeUrl(
       x.author_image
     );
-
 
   return `
 
@@ -730,7 +710,6 @@ function articleCard(x){
         ''
       }
 
-
       <div class="article-card-content">
 
         <div class="cat">
@@ -742,13 +721,11 @@ function articleCard(x){
 
         </div>
 
-
         <h3>
 
           ${esc(x.title)}
 
         </h3>
-
 
         ${
           x.author
@@ -792,7 +769,6 @@ function renderArticles(items){
     return;
   }
 
-
   if(!items.length){
 
     target.innerHTML=`
@@ -808,7 +784,6 @@ function renderArticles(items){
 
   }
 
-
   /*
     نحفظ المقالات كاملة في الذاكرة
     حتى نستطيع فتح المقال فوراً
@@ -818,13 +793,10 @@ function renderArticles(items){
   window.__CC_ARTICLES__=
     items;
 
-
   target.innerHTML=
     items
       .map(articleCard)
       .join('');
-
-
 
   /*
     click
@@ -833,6 +805,7 @@ function renderArticles(items){
   bindArticleClicks(target);
 
 }
+
 
 function bindArticleClicks(target){
 
@@ -850,7 +823,6 @@ function bindArticleClicks(target){
         openArticle(id);
 
       };
-
 
       card.onkeydown=e=>{
 
@@ -887,7 +859,6 @@ function renderTeam(items){
   if(!target){
     return;
   }
-
 
   target.innerHTML=
     items.length
@@ -931,13 +902,11 @@ function renderTeam(items){
 
         </div>
 
-
         <h3>
 
           ${esc(x.name)}
 
         </h3>
-
 
         <div class="role">
 
@@ -946,7 +915,6 @@ function renderTeam(items){
           )}
 
         </div>
-
 
         <p>
 
@@ -986,7 +954,6 @@ function renderEditors(items){
   if(!target){
     return;
   }
-
 
   target.innerHTML=
     items.length
@@ -1034,7 +1001,6 @@ function renderEditors(items){
 
         </div>
 
-
         <h3>
 
           ${esc(
@@ -1046,6 +1012,22 @@ function renderEditors(items){
           )}
 
         </h3>
+
+        ${
+          x.bio
+
+          ?
+
+          `
+          <p class="editor-bio">
+            ${esc(x.bio)}
+          </p>
+          `
+
+          :
+
+          ''
+        }
 
       </article>
 
@@ -1081,16 +1063,13 @@ function createArticleReader(){
 
   }
 
-
   const reader=
     document.createElement(
       'div'
     );
 
-
   reader.id=
     'ccArticleReader';
-
 
   reader.innerHTML=`
 
@@ -1098,7 +1077,6 @@ function createArticleReader(){
       class="cc-reader-backdrop"
       data-close-reader
     ></div>
-
 
     <article
       class="cc-reader"
@@ -1116,7 +1094,6 @@ function createArticleReader(){
         ×
       </button>
 
-
       <div
         class="cc-reader-inner"
         id="ccArticleContent"
@@ -1126,11 +1103,9 @@ function createArticleReader(){
 
   `;
 
-
   document.body.appendChild(
     reader
   );
-
 
   /*
     Close buttons
@@ -1145,7 +1120,6 @@ function createArticleReader(){
       button.onclick=closeArticle;
 
     });
-
 
   /*
     Escape
@@ -1168,7 +1142,6 @@ function createArticleReader(){
 
     }
   );
-
 
   /*
     Inject styles only once.
@@ -1195,16 +1168,13 @@ function addArticleReaderStyles(){
 
   }
 
-
   const style=
     document.createElement(
       'style'
     );
 
-
   style.id=
     'ccArticleReaderStyles';
-
 
   style.textContent=`
 
@@ -1216,11 +1186,9 @@ function addArticleReaderStyles(){
       overflow:auto;
     }
 
-
     #ccArticleReader.is-open{
       display:block;
     }
-
 
     .cc-reader-backdrop{
       position:fixed;
@@ -1228,7 +1196,6 @@ function addArticleReaderStyles(){
       background:rgba(0,0,0,.72);
       backdrop-filter:blur(4px);
     }
-
 
     .cc-reader{
       position:relative;
@@ -1244,7 +1211,6 @@ function addArticleReaderStyles(){
         rgba(0,0,0,.25);
     }
 
-
     .cc-reader-inner{
       width:100%;
       padding:
@@ -1256,7 +1222,6 @@ function addArticleReaderStyles(){
         )
         100px;
     }
-
 
     .cc-reader-close{
       position:fixed;
@@ -1277,14 +1242,12 @@ function addArticleReaderStyles(){
         rgba(0,0,0,.2);
     }
 
-
     .cc-article-category{
       margin-bottom:14px;
       font-size:14px;
       font-weight:700;
       color:var(--red);
     }
-
 
     .cc-article-title{
       margin:0 0 20px;
@@ -1298,7 +1261,6 @@ function addArticleReaderStyles(){
       font-weight:800;
       color:var(--reader-ink);
     }
-
 
     .cc-author-link{
       color:var(--reader-accent);
@@ -1319,7 +1281,6 @@ function addArticleReaderStyles(){
       color:var(--reader-muted);
     }
 
-
     .cc-author-photo{
       width:48px;
       height:48px;
@@ -1327,7 +1288,6 @@ function addArticleReaderStyles(){
       object-fit:cover;
       flex:none;
     }
-
 
     .cc-author-placeholder{
       display:flex;
@@ -1342,14 +1302,12 @@ function addArticleReaderStyles(){
       flex:none;
     }
 
-
     .cc-article-hero{
       width:100%;
       margin:
         0 0 42px;
       overflow:hidden;
     }
-
 
     .cc-article-hero img{
       display:block;
@@ -1358,7 +1316,6 @@ function addArticleReaderStyles(){
       max-height:680px;
       object-fit:cover;
     }
-
 
     .cc-article-body{
       font-size:
@@ -1370,7 +1327,6 @@ function addArticleReaderStyles(){
       line-height:2;
       color:var(--reader-ink);
     }
-
 
     /*
       تنضيد المتن:
@@ -1389,7 +1345,6 @@ function addArticleReaderStyles(){
       text-justify:inter-word;
       text-wrap:pretty;
     }
-
 
     .cc-article-body .cc-h{
       display:block;
@@ -1416,7 +1371,6 @@ function addArticleReaderStyles(){
         0;
     }
 
-
     .cc-article-image img{
       display:block;
       width:100%;
@@ -1424,7 +1378,6 @@ function addArticleReaderStyles(){
       max-height:700px;
       object-fit:cover;
     }
-
 
     .cc-article-date{
       margin-top:35px;
@@ -1434,12 +1387,10 @@ function addArticleReaderStyles(){
       color:var(--reader-muted);
     }
 
-
     .cc-no-content{
       padding:40px 0;
       color:var(--reader-muted);
     }
-
 
     .cc-share{
       display:flex;
@@ -1451,7 +1402,6 @@ function addArticleReaderStyles(){
       border-top:1px solid var(--reader-line);
     }
 
-
     .cc-share-label{
       font-size:13px;
       font-weight:700;
@@ -1459,13 +1409,11 @@ function addArticleReaderStyles(){
       color:var(--reader-muted);
     }
 
-
     .cc-share-btns{
       display:flex;
       flex-wrap:wrap;
       gap:8px;
     }
-
 
     .cc-share-btn{
       display:inline-flex;
@@ -1486,13 +1434,11 @@ function addArticleReaderStyles(){
         color .18s;
     }
 
-
     .cc-share-btn svg{
       width:16px;
       height:16px;
       flex:none;
     }
-
 
     .cc-share-btn:hover{
       border-color:var(--reader-ink);
@@ -1500,18 +1446,15 @@ function addArticleReaderStyles(){
       color:var(--reader-bg);
     }
 
-
     .cc-share-btn.is-done{
       border-color:var(--red);
       background:var(--red);
       color:#fff;
     }
 
-
     body.cc-reader-open{
       overflow:hidden;
     }
-
 
     @media(max-width:700px){
 
@@ -1522,7 +1465,6 @@ function addArticleReaderStyles(){
           60px;
       }
 
-
       .cc-reader-close{
         top:10px;
         right:10px;
@@ -1531,17 +1473,14 @@ function addArticleReaderStyles(){
         font-size:27px;
       }
 
-
       .cc-article-title{
         font-size:32px;
       }
-
 
       .cc-article-body{
         font-size:18px;
         line-height:1.9;
       }
-
 
       .cc-article-image{
         margin:
@@ -1549,22 +1488,18 @@ function addArticleReaderStyles(){
           0;
       }
 
-
       .cc-share{
         gap:10px;
       }
-
 
       .cc-share-btn{
         padding:8px 11px;
         font-size:12px;
       }
 
-
     }
 
   `;
-
 
   document.head.appendChild(
     style
@@ -1586,7 +1521,6 @@ function articleParagraphs(
     return [];
 
   }
-
 
   /*
     نحافظ على الفقرات.
@@ -1676,7 +1610,6 @@ function articleImage(
     return '';
   }
 
-
   return `
 
     <figure
@@ -1743,15 +1676,12 @@ function shareBar(article){
       article.id
     );
 
-
   const title=
     article.title ||
     'ضد السينما !؟';
 
-
   const e=
     encodeURIComponent;
-
 
   const targets=[
 
@@ -1802,7 +1732,6 @@ function shareBar(article){
     }
 
   ];
-
 
   return `
 
@@ -1874,7 +1803,6 @@ function legacyCopy(
         'textarea'
       );
 
-
     field.value=text;
     field.setAttribute('readonly','');
     field.style.position='fixed';
@@ -1901,17 +1829,14 @@ function bindShareCopy(article){
       'ccShareCopy'
     );
 
-
   if(!button){
     return;
   }
-
 
   const label=
     button.querySelector(
       'span'
     );
-
 
   const done=()=>{
 
@@ -1928,7 +1853,6 @@ function bindShareCopy(article){
 
   };
 
-
   button.onclick=function(){
 
     const url=
@@ -1936,9 +1860,7 @@ function bindShareCopy(article){
         article.id
       );
 
-
     let settled=false;
-
 
     const finish=()=>{
 
@@ -1951,7 +1873,6 @@ function bindShareCopy(article){
       done();
 
     };
-
 
     /*
       في بعض المتصفحات لا تُكمل كتابة الحافظة،
@@ -1974,7 +1895,6 @@ function bindShareCopy(article){
       700
     );
 
-
     if(
       navigator.clipboard &&
       navigator.clipboard.writeText
@@ -1990,7 +1910,6 @@ function bindShareCopy(article){
       return;
 
     }
-
 
     legacyCopy(
       url,
@@ -2010,17 +1929,14 @@ function openArticle(id){
 
   createArticleReader();
 
-
   const articles=
     window.__CC_ARTICLES__ ||
     [];
-
 
   const article=
     articles.find(
       x=>String(x.id)===String(id)
     );
-
 
   if(!article){
 
@@ -2056,47 +1972,39 @@ function openArticle(id){
     })
     .catch(()=>{});
 
-
   const target=
     document.getElementById(
       'ccArticleContent'
     );
 
-
   if(!target){
     return;
   }
-
 
   const paragraphs=
     articleParagraphs(
       article.content
     );
 
-
   const authorImage=
     safeUrl(
       article.author_image
     );
-
 
   const image1=
     safeUrl(
       article.image_1
     );
 
-
   const image2=
     safeUrl(
       article.image_2
     );
 
-
   const image3=
     safeUrl(
       article.image_3
     );
-
 
   /*
     الصورة الثانية:
@@ -2109,12 +2017,10 @@ function openArticle(id){
   const total=
     paragraphs.length;
 
-
   let middleIndex=
     Math.ceil(
       total / 2
     );
-
 
   /*
     إذا كان المقال قصيراً جداً،
@@ -2127,9 +2033,7 @@ function openArticle(id){
 
   }
 
-
   let body='';
-
 
   paragraphs.forEach(
     (paragraph,index)=>{
@@ -2152,7 +2056,6 @@ function openArticle(id){
 
       }
 
-
       /*
         الصورة الثالثة
         قبل الفقرة الأخيرة.
@@ -2170,7 +2073,6 @@ function openArticle(id){
           );
 
       }
-
 
       body+=`
 
@@ -2193,7 +2095,6 @@ function openArticle(id){
 
     }
   );
-
 
   /*
     إذا لم يكن هناك نص مقسم إلى فقرات
@@ -2236,7 +2137,6 @@ function openArticle(id){
 
   }
 
-
   target.innerHTML=`
 
     <div
@@ -2250,7 +2150,6 @@ function openArticle(id){
 
     </div>
 
-
     <h1
       class="cc-article-title"
     >
@@ -2260,7 +2159,6 @@ function openArticle(id){
       )}
 
     </h1>
-
 
     <div
       class="cc-article-author"
@@ -2300,7 +2198,6 @@ function openArticle(id){
         `
       }
 
-
       ${
         article.author
         ?
@@ -2321,7 +2218,6 @@ function openArticle(id){
 
     </div>
 
-
     ${
       image1
 
@@ -2337,7 +2233,6 @@ function openArticle(id){
       ''
     }
 
-
     <div
       class="cc-article-body"
     >
@@ -2345,7 +2240,6 @@ function openArticle(id){
       ${body}
 
     </div>
-
 
     ${
       article.created_at
@@ -2375,11 +2269,9 @@ function openArticle(id){
       ''
     }
 
-
     ${shareBar(article)}
 
   `;
-
 
   /*
     Open
@@ -2390,16 +2282,13 @@ function openArticle(id){
       'ccArticleReader'
     );
 
-
   reader.classList.add(
     'is-open'
   );
 
-
   document.body.classList.add(
     'cc-reader-open'
   );
-
 
   /*
     Start from article top.
@@ -2407,13 +2296,11 @@ function openArticle(id){
 
   reader.scrollTop=0;
 
-
   /*
     Share bar: copy-link button.
   */
 
   bindShareCopy(article);
-
 
   /*
     Keep the article addressable,
@@ -2423,7 +2310,6 @@ function openArticle(id){
   const hash=
     '#article-'+
     encodeURIComponent(article.id);
-
 
   if(location.hash!==hash){
 
@@ -2451,21 +2337,17 @@ function closeArticle(){
       'ccArticleReader'
     );
 
-
   if(!reader){
     return;
   }
-
 
   reader.classList.remove(
     'is-open'
   );
 
-
   document.body.classList.remove(
     'cc-reader-open'
   );
-
 
   /*
     Clear URL hash if any.
@@ -2502,7 +2384,6 @@ function formatArticleDate(
     const date=
       new Date(value);
 
-
     if(
       Number.isNaN(
         date.getTime()
@@ -2512,7 +2393,6 @@ function formatArticleDate(
       return '';
 
     }
-
 
     return new Intl.DateTimeFormat(
       'ar-DZ',
@@ -2542,7 +2422,6 @@ function openArticleFromHash(){
     location.hash ||
     '';
 
-
   if(
     !hash.startsWith(
       '#article-'
@@ -2553,17 +2432,14 @@ function openArticleFromHash(){
 
   }
 
-
   let id=
     hash.slice(9);
-
 
   try{
 
     id=decodeURIComponent(id);
 
   }catch(e){}
-
 
   if(id){
 
@@ -2739,6 +2615,7 @@ async function renderArchivePage(mode){
 
 }
 
+
 /* =========================================================
    SITE SETTINGS (accent + footer) — all pages
 ========================================================= */
@@ -2849,7 +2726,6 @@ async function main(){
 
   ]);
 
-
   /*
     Issues
   */
@@ -2861,11 +2737,9 @@ async function main(){
     :
     fallbackIssues;
 
-
   renderIssues(
     all
   );
-
 
   /*
     Sections
@@ -2874,7 +2748,6 @@ async function main(){
   renderSections(
     sections
   );
-
 
   /*
     Articles
@@ -2886,7 +2759,6 @@ async function main(){
     )
   );
 
-
   /*
     Team
   */
@@ -2895,7 +2767,6 @@ async function main(){
     team
   );
 
-
   /*
     Editors
   */
@@ -2903,7 +2774,6 @@ async function main(){
   renderEditors(
     editors
   );
-
 
   /*
     Current issue
@@ -2920,7 +2790,6 @@ async function main(){
     :
     null;
 
-
   if(!current){
 
     current=
@@ -2929,11 +2798,9 @@ async function main(){
 
   }
 
-
   renderCurrent(
     current
   );
-
 
   /*
     Site settings
@@ -2950,7 +2817,6 @@ async function main(){
 
     }
 
-
     if(
       settings.hero_title &&
       $('#heroTitle')
@@ -2961,7 +2827,6 @@ async function main(){
           settings.hero_title;
 
     }
-
 
     if(
       settings.hero_subtitle &&
@@ -2974,7 +2839,6 @@ async function main(){
 
     }
 
-
     if(
       settings.about_title &&
       $('#aboutTitle')
@@ -2985,7 +2849,6 @@ async function main(){
           settings.about_title;
 
     }
-
 
     if(
       settings.about_text &&
@@ -2998,7 +2861,6 @@ async function main(){
 
     }
 
-
     if(
       settings.about_text_2 &&
       $('#aboutText2')
@@ -3009,7 +2871,6 @@ async function main(){
           settings.about_text_2;
 
     }
-
 
     if(
       settings.contact_email &&
@@ -3028,7 +2889,6 @@ async function main(){
 
   }
 
-
   applySiteSettings(settings);
 
   /*
@@ -3038,14 +2898,12 @@ async function main(){
 
   createArticleReader();
 
-
   /*
     Shared links: open the article
     when the page loads with a hash.
   */
 
   openArticleFromHash();
-
 
   window.addEventListener(
     'hashchange',
