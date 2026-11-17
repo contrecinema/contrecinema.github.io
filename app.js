@@ -1,4 +1,4 @@
-const SUPABASE_URL='https://icbfpfrzvdfmgunzlduu.supabase.co';
+Const SUPABASE_URL='https://icbfpfrzvdfmgunzlduu.supabase.co';
 const SUPABASE_KEY='sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 
 const db=supabase.createClient(
@@ -229,7 +229,7 @@ const fallbackSections=[
 
 
 /* =========================================================
-   DATABASE GET (مع معالجة استجابة الـ RLS والبيانات)
+   DATABASE GET
 ========================================================= */
 
 async function get(
@@ -669,11 +669,6 @@ function articleCard(x){
   const image=
     safeUrl(
       x.image_1
-    );
-
-  const authorImage=
-    safeUrl(
-      x.author_image
     );
 
   return `
@@ -2348,7 +2343,7 @@ function openArticleFromHash(){
 
 
 /* =========================================================
-   ARCHIVE PAGES (section / author)
+   ARCHIVE PAGES (section / author) — المعدلة بدقة
 ========================================================= */
 
 async function renderArchivePage(mode){
@@ -2421,11 +2416,12 @@ async function renderArchivePage(mode){
         s=>s.name===wanted
       );
 
+    // [التعديل الجذري والنهائي هنا للفلترة بدقة تطابق تام دون مشاكل]
     list=list.filter(
       x=>
         (x.category||'')
           .trim()
-          .startsWith(wanted)
+          .toLowerCase() === wanted.toLowerCase()
     );
 
     titleTarget.textContent=
