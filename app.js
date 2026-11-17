@@ -229,7 +229,7 @@ const fallbackSections=[
 
 
 /* =========================================================
-   DATABASE GET
+   DATABASE GET (مع معالجة استجابة الـ RLS والبيانات)
 ========================================================= */
 
 async function get(
@@ -669,6 +669,11 @@ function articleCard(x){
   const image=
     safeUrl(
       x.image_1
+    );
+
+  const authorImage=
+    safeUrl(
+      x.author_image
     );
 
   return `
@@ -2343,7 +2348,7 @@ function openArticleFromHash(){
 
 
 /* =========================================================
-   ARCHIVE PAGES (section / author) — المعدلة بدقة
+   ARCHIVE PAGES (section / author)
 ========================================================= */
 
 async function renderArchivePage(mode){
@@ -2413,15 +2418,15 @@ async function renderArchivePage(mode){
 
     const match=
       sections.find(
-        s=>s.name===wanted
+        s=>s.name.trim().toLowerCase() === wanted.trim().toLowerCase()
       );
 
-    // [التعديل الجذري والنهائي هنا للفلترة بدقة تطابق تام دون مشاكل]
     list=list.filter(
-      x=>
-        (x.category||'')
-          .trim()
-          .toLowerCase() === wanted.toLowerCase()
+      x=> {
+        const cat = (x.category || '').trim().toLowerCase();
+        const w = wanted.trim().toLowerCase();
+        return cat === w || cat.includes(w) || w.includes(cat);
+      }
     );
 
     titleTarget.textContent=
@@ -2444,9 +2449,11 @@ async function renderArchivePage(mode){
   }else{
 
     list=list.filter(
-      x=>
-        (x.author||'')
-          .trim()===wanted
+      x=> {
+        const artAuthor = (x.author || '').trim().toLowerCase();
+        const w = wanted.trim().toLowerCase();
+        return artAuthor === w || artAuthor.includes(w) || w.includes(artAuthor);
+      }
     );
 
     titleTarget.textContent=
