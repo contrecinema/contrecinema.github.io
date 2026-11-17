@@ -1,66 +1,65 @@
-Const SUPABASE_URL='https://icbfpfrzvdfmgunzlduu.supabase.co';
-const SUPABASE_KEY='sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 
-const db=supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+const SUPABASE_URL = 'https://icbfpfrzvdfmgunzlduu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
-/* صور الأعداد والمقالات ما زالت على مشروع التخزين السابق (محجوب مؤقتاً).
-   نُخفي أيقونة الصورة المكسورة؛ كل حاويات الصور لها خلفية في style.css */
-addEventListener('error',e=>{
+/* =========================================================
+   IMAGE ERROR HANDLING
+========================================================= */
 
-  const el=e.target;
+addEventListener('error', e => {
+  const el = e.target;
 
-  if(el&&el.tagName==='IMG'&&!el.dataset.broken){
-
-    el.dataset.broken='1';
-
-    el.style.display='none';
-
+  if (el && el.tagName === 'IMG' && !el.dataset.broken) {
+    el.dataset.broken = '1';
+    el.style.display = 'none';
   }
-
-},true);
+}, true);
 
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-const $=s=>document.querySelector(s);
+const $ = s => document.querySelector(s);
 
-const esc=s=>String(s??'')
-  .replace(/[&<>"']/g,m=>({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#039;'
-  }[m]));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#039;'
+}[m]));
 
+function safeUrl(url) {
+  if (!url) return '';
 
-function safeUrl(url){
+  try {
+    const u = new URL(url);
 
-  if(!url) return '';
-
-  try{
-
-    const u=new URL(url);
-
-    if(
-      u.protocol==='https:' ||
-      u.protocol==='http:'
-    ){
-
+    if (u.protocol === 'https:' || u.protocol === 'http:') {
       return u.href;
-
     }
-
-  }catch(e){}
+  } catch (e) {}
 
   return '';
+}
 
+
+/* توحيد الأسماء العربية عند البحث والمقارنة */
+
+function normalizeName(value) {
+  return String(value ?? '')
+    .normalize('NFC')
+    .replace(/[\u0640]/g, '')
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }
 
 
@@ -68,93 +67,57 @@ function safeUrl(url){
    THEME (dark / light) + ADMIN SHORTCUT
 ========================================================= */
 
-function applyTheme(theme){
+function applyTheme(theme) {
+  const dark = theme === 'dark';
 
-  const dark=
-    theme==='dark';
-
-  document.documentElement
-    .setAttribute(
-      'data-theme',
-      dark
-        ? 'dark'
-        : 'light'
-    );
-
+  document.documentElement.setAttribute(
+    'data-theme',
+    dark ? 'dark' : 'light'
+  );
 }
 
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
 
-function toggleTheme(){
-
-  const current=
-    document.documentElement
-      .getAttribute('data-theme');
-
-  const next=
-    current==='dark'
-      ? 'light'
-      : 'dark';
-
-  try{
-    localStorage.setItem(
-      'cc-theme',
-      next
-    );
-  }catch(e){}
+  try {
+    localStorage.setItem('cc-theme', next);
+  } catch (e) {}
 
   applyTheme(next);
-
 }
 
+function initTheme() {
+  let stored = null;
 
-function initTheme(){
-
-  let stored=null;
-
-  try{
-    stored=
-      localStorage.getItem(
-        'cc-theme'
-      );
-  }catch(e){}
+  try {
+    stored = localStorage.getItem('cc-theme');
+  } catch (e) {}
 
   applyTheme(
     stored ||
     (window.matchMedia &&
-     window.matchMedia(
-       '(prefers-color-scheme: dark)'
-     ).matches
+      window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light')
   );
 
-  const button=
-    $('#themeToggle');
+  const button = $('#themeToggle');
 
-  if(button){
-    button.onclick=toggleTheme;
+  if (button) {
+    button.onclick = toggleTheme;
   }
 
-  document.addEventListener(
-    'keydown',
-    e=>{
-
-      if(
-        e.ctrlKey &&
-        e.shiftKey &&
-        (e.key==='A' || e.key==='a')
-      ){
-
-        e.preventDefault();
-
-        location.href=
-          'cc-control.html';
-
-      }
-
+  document.addEventListener('keydown', e => {
+    if (
+      e.ctrlKey &&
+      e.shiftKey &&
+      (e.key === 'A' || e.key === 'a')
+    ) {
+      e.preventDefault();
+      location.href = 'cc-control.html';
     }
-  );
-
+  });
 }
 
 
@@ -162,61 +125,36 @@ function initTheme(){
    MOBILE MENU
 ========================================================= */
 
-if($('#hamb')){
-
-  $('#hamb').onclick=()=>{
-
-    document.body.classList.toggle(
-      'nav-open'
-    );
-
+if ($('#hamb')) {
+  $('#hamb').onclick = () => {
+    document.body.classList.toggle('nav-open');
   };
-
 }
 
-
-document
-  .querySelectorAll('#nav a')
-  .forEach(a=>{
-
-    a.onclick=()=>{
-
-      document.body.classList.remove(
-        'nav-open'
-      );
-
-    };
-
-  });
+document.querySelectorAll('#nav a').forEach(a => {
+  a.onclick = () => {
+    document.body.classList.remove('nav-open');
+  };
+});
 
 
 /* =========================================================
    FALLBACK DATA
 ========================================================= */
 
-const fallbackIssues=
-  Array.from(
-    {length:9},
-    (_,i)=>({
+const fallbackIssues = Array.from(
+  { length: 9 },
+  (_, i) => ({
+    id: 'fallback-' + (i + 1),
+    issue_number: i + 1,
+    title: 'العدد ' + (i + 1),
+    publication_date: '',
+    pdf_url: '',
+    cover_image: ''
+  })
+);
 
-      id:'fallback-'+(i+1),
-
-      issue_number:i+1,
-
-      title:
-        'العدد '+(i+1),
-
-      publication_date:'',
-
-      pdf_url:'',
-
-      cover_image:''
-
-    })
-  );
-
-
-const fallbackSections=[
+const fallbackSections = [
   'رؤى سينمائية',
   'مراجعات',
   'أفلام الشهر',
@@ -229,47 +167,26 @@ const fallbackSections=[
 
 
 /* =========================================================
-   DATABASE GET (مع معالجة استجابة الـ RLS والبيانات)
+   DATABASE GET
 ========================================================= */
 
-async function get(
-  table,
-  order='created_at',
-  ascending=false
-){
+async function get(table, order = 'created_at', ascending = false) {
+  try {
+    const r = await db
+      .from(table)
+      .select('*')
+      .order(order, { ascending });
 
-  try{
-
-    const r=
-      await db
-        .from(table)
-        .select('*')
-        .order(
-          order,
-          {ascending}
-        );
-
-    if(r.error){
-
-      console.error(
-        `Supabase ${table}:`,
-        r.error
-      );
-
+    if (r.error) {
+      console.error(`Supabase ${table}:`, r.error);
       return [];
-
     }
 
-    return r.data||[];
-
-  }catch(e){
-
+    return r.data || [];
+  } catch (e) {
     console.error(e);
-
     return [];
-
   }
-
 }
 
 
@@ -277,18 +194,10 @@ async function get(
    ISSUE COVER
 ========================================================= */
 
-function cover(
-  x,
-  small=false
-){
+function cover(x, small = false) {
+  const image = safeUrl(x.cover_image);
 
-  const image=
-    safeUrl(
-      x.cover_image
-    );
-
-  if(image){
-
+  if (image) {
     return `
       <img
         src="${esc(image)}"
@@ -296,7 +205,6 @@ function cover(
         loading="lazy"
       >
     `;
-
   }
 
   return `
@@ -304,7 +212,6 @@ function cover(
       العدد ${esc(x.issue_number)}
     </span>
   `;
-
 }
 
 
@@ -312,134 +219,82 @@ function cover(
    ISSUES
 ========================================================= */
 
-function renderIssues(items){
+function renderIssues(items) {
+  const target = $('#issuesGrid');
 
-  const target=
-    $('#issuesGrid');
+  if (!target) return;
 
-  if(!target){
-    return;
-  }
+  const range = $('#issuesRange');
 
-  const range =
-    $('#issuesRange');
+  if (range && items.length) {
+    const nums = items
+      .map(x => Number(x.issue_number))
+      .filter(n => !Number.isNaN(n));
 
-  if(range && items.length){
-
-    const nums =
-      items
-        .map(x=>Number(x.issue_number))
-        .filter(n=>!Number.isNaN(n));
-
-    if(nums.length){
-
+    if (nums.length) {
       range.textContent =
         'من العدد ' +
         Math.min(...nums) +
         ' إلى العدد ' +
         Math.max(...nums);
-
     }
-
   }
 
-  target.innerHTML=
-    items.map(x=>`
+  target.innerHTML = items.map(x => `
+    <article class="issue-card">
+      <div class="issue-cover">
+        ${cover(x, true)}
+      </div>
 
-      <article
-        class="issue-card"
-      >
+      <div class="issue-body">
+        <strong>
+          العدد
+          ${esc(x.issue_number)}
+          ${
+            (String(x.publication_date || '').match(/(?:19|20)\d{2}/) || [])[0]
+              ? `<span class="issue-year">(${
+                  esc((String(x.publication_date || '').match(/(?:19|20)\d{2}/) || [])[0])
+                })</span>`
+              : ''
+          }
+        </strong>
 
-        <div class="issue-cover">
+        <p>
+          ${esc(x.title || 'ضد السينما !؟')}
+          ${
+            x.publication_date
+              ? ' — ' + esc(x.publication_date)
+              : ''
+          }
+        </p>
 
-          ${cover(x,true)}
+        <div class="issue-links">
+          ${
+            x.pdf_url
+              ? `
+                <a
+                  class="mini red"
+                  target="_blank"
+                  rel="noopener"
+                  href="${esc(x.pdf_url)}"
+                >
+                  تصفح PDF
+                </a>
+              `
+              : `
+                <span class="mini">
+                  PDF قريباً
+                </span>
+              `
+          }
 
+          <a class="mini" href="#articles">
+            المقالات
+          </a>
         </div>
-
-        <div class="issue-body">
-
-          <strong>
-            العدد
-            ${esc(x.issue_number)}
-            ${
-              (String(x.publication_date||'')
-                .match(/(?:19|20)\d{2}/)||[])[0]
-              ?
-              `<span class="issue-year">(${
-                esc(
-                  (String(x.publication_date||'')
-                    .match(/(?:19|20)\d{2}/)||[])[0]
-                )
-              })</span>`
-              :
-              ''
-            }
-          </strong>
-
-          <p>
-
-            ${esc(
-              x.title ||
-              'ضد السينما !؟'
-            )}
-
-            ${
-              x.publication_date
-              ?
-              ' — '+
-              esc(
-                x.publication_date
-              )
-              :
-              ''
-            }
-
-          </p>
-
-          <div class="issue-links">
-
-            ${
-              x.pdf_url
-
-              ?
-
-              `
-              <a
-                class="mini red"
-                target="_blank"
-                rel="noopener"
-                href="${esc(
-                  x.pdf_url
-                )}"
-              >
-                تصفح PDF
-              </a>
-              `
-
-              :
-
-              `
-              <span class="mini">
-                PDF قريباً
-              </span>
-              `
-            }
-
-            <a
-              class="mini"
-              href="#articles"
-            >
-              المقالات
-            </a>
-
-          </div>
-
-        </div>
-
-      </article>
-
-    `).join('');
-
+      </div>
+    </article>
+  `).join('');
 }
 
 
@@ -447,134 +302,80 @@ function renderIssues(items){
    CURRENT ISSUE
 ========================================================= */
 
-function renderCurrent(x){
+function renderCurrent(x) {
+  const target = $('#currentIssue');
 
-  const target=
-    $('#currentIssue');
+  if (!target) return;
 
-  if(!target){
-    return;
-  }
-
-  if(!x){
-
-    target.innerHTML=`
+  if (!x) {
+    target.innerHTML = `
       <div class="empty">
-
         لم يتم اختيار عدد الشهر بعد.
         يمكنك تحديده من لوحة التحكم.
-
       </div>
     `;
-
     return;
-
   }
 
-  const image=
-    safeUrl(
-      x.cover_image
-    );
+  const image = safeUrl(x.cover_image);
 
-  target.innerHTML=`
-
+  target.innerHTML = `
     <div class="current-cover">
-
       ${
         image
-
-        ?
-
-        `
-        <img
-          src="${esc(image)}"
-          alt="غلاف العدد"
-          loading="lazy"
-        >
-        `
-
-        :
-
-        `
-        <div class="placeholder-cover">
-
-          العدد
-          ${esc(x.issue_number)}
-
-        </div>
-        `
+          ? `
+            <img
+              src="${esc(image)}"
+              alt="غلاف العدد"
+              loading="lazy"
+            >
+          `
+          : `
+            <div class="placeholder-cover">
+              العدد ${esc(x.issue_number)}
+            </div>
+          `
       }
-
     </div>
 
     <div class="current-info">
-
       <div class="num">
-
-        العدد
-        ${esc(x.issue_number)}
-
+        العدد ${esc(x.issue_number)}
       </div>
 
       <h3>
-
-        ${esc(
-          x.title ||
-          'ضد السينما !؟'
-        )}
-
+        ${esc(x.title || 'ضد السينما !؟')}
       </h3>
 
       <p>
-
         ${
           x.publication_date
-          ?
-          esc(
-            x.publication_date
-          )
-          :
-          'عدد جديد من المجلة المستقلة للنقد السينمائي.'
+            ? esc(x.publication_date)
+            : 'عدد جديد من المجلة المستقلة للنقد السينمائي.'
         }
-
       </p>
 
       <p>
-
         تصفح العدد، واقرأ ملفاتنا
         ومراجعاتنا وحواراتنا السينمائية.
-
       </p>
 
       ${
         x.pdf_url
-
-        ?
-
-        `
-        <a
-          class="btn primary"
-          target="_blank"
-          rel="noopener"
-          href="${esc(
-            x.pdf_url
-          )}"
-        >
-
-          تصفح وتحميل العدد PDF
-
-        </a>
-        `
-
-        :
-
-        ''
+          ? `
+            <a
+              class="btn primary"
+              target="_blank"
+              rel="noopener"
+              href="${esc(x.pdf_url)}"
+            >
+              تصفح وتحميل العدد PDF
+            </a>
+          `
+          : ''
       }
-
     </div>
-
   `;
-
 }
 
 
@@ -582,60 +383,34 @@ function renderCurrent(x){
    SECTIONS
 ========================================================= */
 
-function renderSections(items){
+function renderSections(items) {
+  const target = $('#sectionsGrid');
 
-  const target=
-    $('#sectionsGrid');
+  if (!target) return;
 
-  if(!target){
-    return;
-  }
-
-  const a=
-    items.length
-    ?
-    items
-    :
-    fallbackSections.map(
-      (name,i)=>({
-
+  const a = items.length
+    ? items
+    : fallbackSections.map((name, i) => ({
         name,
+        description: 'قسم من أقسام المجلة',
+        sort_order: i
+      }));
 
-        description:
-          'قسم من أقسام المجلة',
+  target.innerHTML = a.map(x => `
+    <a
+      class="section-card"
+      href="section.html?slug=${encodeURIComponent(x.name)}"
+    >
+      <b>${esc(x.name)}</b>
 
-        sort_order:i
-
-      })
-    );
-
-  target.innerHTML=
-    a.map(x=>`
-
-      <a
-        class="section-card"
-        href="section.html?slug=${
-          encodeURIComponent(x.name)
-        }"
-      >
-
-        <b>
-          ${esc(x.name)}
-        </b>
-
-        <p>
-
-          ${esc(
-            x.description ||
-            'كتابات ومتابعات نقدية حول السينما.'
-          )}
-
-        </p>
-
-      </a>
-
-    `).join('');
-
+      <p>
+        ${esc(
+          x.description ||
+          'كتابات ومتابعات نقدية حول السينما.'
+        )}
+      </p>
+    </a>
+  `).join('');
 }
 
 
@@ -643,41 +418,20 @@ function renderSections(items){
    ARTICLE CARD
 ========================================================= */
 
-function viewsLabel(n){
+function viewsLabel(n) {
+  const v = Number(n) || 0;
 
-  const v=Number(n)||0;
+  if (v === 1) return 'قراءة واحدة';
+  if (v === 2) return 'قراءتان';
+  if (v <= 10) return v + ' قراءات';
 
-  if(v===1){
-    return 'قراءة واحدة';
-  }
-
-  if(v===2){
-    return 'قراءتان';
-  }
-
-  if(v<=10){
-    return v+' قراءات';
-  }
-
-  return v+' قراءة';
-
+  return v + ' قراءة';
 }
 
-
-function articleCard(x){
-
-  const image=
-    safeUrl(
-      x.image_1
-    );
-
-  const authorImage=
-    safeUrl(
-      x.author_image
-    );
+function articleCard(x) {
+  const image = safeUrl(x.image_1);
 
   return `
-
     <article
       class="article-card"
       data-article-id="${esc(x.id)}"
@@ -685,74 +439,51 @@ function articleCard(x){
       role="button"
       aria-label="قراءة مقال ${esc(x.title)}"
     >
-
       ${
         image
-
-        ?
-
-        `
-        <div
-          class="article-card-image"
-        >
-
-          <img
-            src="${esc(image)}"
-            alt="${esc(x.title)}"
-            loading="lazy"
-          >
-
-        </div>
-        `
-
-        :
-
-        ''
+          ? `
+            <div class="article-card-image">
+              <img
+                src="${esc(image)}"
+                alt="${esc(x.title)}"
+                loading="lazy"
+              >
+            </div>
+          `
+          : ''
       }
 
       <div class="article-card-content">
-
         <div class="cat">
-
-          ${esc(
-            x.category ||
-            'نقد سينمائي'
-          )}
-
+          ${esc(x.category || 'نقد سينمائي')}
         </div>
 
         <h3>
-
           ${esc(x.title)}
-
         </h3>
 
         ${
           x.author
-
-          ?
-
-          `
-          <small>
-            ${esc(x.author)}
-          </small>
-          `
-
-          :
-
-          ''
+            ? `
+              <small>
+                <a
+                  class="cc-card-author-link"
+                  href="author.html?name=${encodeURIComponent(x.author)}"
+                  data-author-link
+                >
+                  ${esc(x.author)}
+                </a>
+              </small>
+            `
+            : ''
         }
 
-      <small class="views">
-        ${viewsLabel(x.views)}
-      </small>
-
+        <small class="views">
+          ${viewsLabel(x.views)}
+        </small>
       </div>
-
     </article>
-
   `;
-
 }
 
 
@@ -760,80 +491,55 @@ function articleCard(x){
    ARTICLES GRID
 ========================================================= */
 
-function renderArticles(items){
+function renderArticles(items) {
+  const target = $('#articlesGrid');
 
-  const target=
-    $('#articlesGrid');
+  if (!target) return;
 
-  if(!target){
-    return;
-  }
-
-  if(!items.length){
-
-    target.innerHTML=`
+  if (!items.length) {
+    target.innerHTML = `
       <div class="empty">
-
         ستظهر المقالات هنا فور
         إضافتها من لوحة التحكم.
-
       </div>
     `;
-
     return;
-
   }
 
-  window.__CC_ARTICLES__=
-    items;
+  window.__CC_ARTICLES__ = items;
 
-  target.innerHTML=
-    items
-      .map(articleCard)
-      .join('');
+  target.innerHTML = items.map(articleCard).join('');
 
   bindArticleClicks(target);
-
 }
 
+function bindArticleClicks(target) {
+  target.querySelectorAll('[data-article-id]').forEach(card => {
+    card.onclick = e => {
+      // الضغط على اسم الكاتب يفتح أرشيف الكاتب ولا يفتح المقال.
+      if (e.target.closest('[data-author-link]')) {
+        return;
+      }
 
-function bindArticleClicks(target){
+      const id = card.dataset.articleId;
+      openArticle(id);
+    };
 
-  target
-    .querySelectorAll(
-      '[data-article-id]'
-    )
-    .forEach(card=>{
+    card.onkeydown = e => {
+      if (
+        e.key === 'Enter' ||
+        e.key === ' '
+      ) {
+        // لا نتدخل في الضغط على رابط الكاتب.
+        if (e.target.closest('a')) return;
 
-      card.onclick=()=>{
+        e.preventDefault();
 
-        const id=
-          card.dataset.articleId;
-
+        const id = card.dataset.articleId;
         openArticle(id);
-
-      };
-
-      card.onkeydown=e=>{
-
-        if(
-          e.key==='Enter' ||
-          e.key===' '
-        ){
-
-          e.preventDefault();
-
-          const id=
-            card.dataset.articleId;
-
-          openArticle(id);
-
-        }
-
-      };
-
-    });
-
+      }
+    };
+  });
 }
 
 
@@ -841,94 +547,45 @@ function bindArticleClicks(target){
    TEAM
 ========================================================= */
 
-function renderTeam(items){
+function renderTeam(items) {
+  const target = $('#teamGrid');
 
-  const target=
-    $('#teamGrid');
+  if (!target) return;
 
-  if(!target){
-    return;
-  }
+  target.innerHTML = items.length
+    ? items.map(x => `
+        <article class="person">
+          <div class="avatar">
+            ${
+              safeUrl(x.image_url)
+                ? `
+                  <img
+                    src="${esc(safeUrl(x.image_url))}"
+                    alt="${esc(x.name)}"
+                    loading="lazy"
+                  >
+                `
+                : esc((x.name || '?').slice(0, 1))
+            }
+          </div>
 
-  target.innerHTML=
-    items.length
+          <h3>${esc(x.name)}</h3>
 
-    ?
+          <div class="role">
+            ${esc(x.role || '')}
+          </div>
 
-    items.map(x=>`
-
-      <article
-        class="person"
-      >
-
-        <div class="avatar">
-
-          ${
-            safeUrl(
-              x.image_url
-            )
-
-            ?
-
-            `
-            <img
-              src="${esc(
-                safeUrl(
-                  x.image_url
-                )
-              )}"
-              alt="${esc(x.name)}"
-              loading="lazy"
-            >
-            `
-
-            :
-
-            esc(
-              (x.name||'?')
-                .slice(0,1)
-            )
-          }
-
+          <p>
+            ${esc(x.bio || '')}
+          </p>
+        </article>
+      `).join('')
+    : `
+        <div class="empty">
+          أضف أعضاء هيئة التحرير
+          من لوحة التحكم.
         </div>
-
-        <h3>
-
-          ${esc(x.name)}
-
-        </h3>
-
-        <div class="role">
-
-          ${esc(
-            x.role||''
-          )}
-
-        </div>
-
-        <p>
-
-          ${esc(
-            x.bio||''
-          )}
-
-        </p>
-
-      </article>
-
-    `).join('')
-
-    :
-
-    `
-    <div class="empty">
-
-      أضف أعضاء هيئة التحرير
-      من لوحة التحكم.
-
-    </div>
-    `;
-
+      `;
 }
 
 
@@ -936,104 +593,49 @@ function renderTeam(items){
    EDITORS
 ========================================================= */
 
-function renderEditors(items){
+function renderEditors(items) {
+  const target = $('#editorsGrid');
 
-  const target=
-    $('#editorsGrid');
+  if (!target) return;
 
-  if(!target){
-    return;
-  }
+  target.innerHTML = items.length
+    ? items.map(x => `
+        <article class="person">
+          <div class="avatar">
+            ${
+              safeUrl(x.image_url)
+                ? `
+                  <img
+                    src="${esc(safeUrl(x.image_url))}"
+                    alt="${esc([x.name, x.surname].filter(Boolean).join(' '))}"
+                    loading="lazy"
+                  >
+                `
+                : esc((x.name || '?').slice(0, 1))
+            }
+          </div>
 
-  target.innerHTML=
-    items.length
-
-    ?
-
-    items.map(x=>`
-
-      <article
-        class="person"
-      >
-
-        <div class="avatar">
+          <h3>
+            ${esc([x.name, x.surname].filter(Boolean).join(' '))}
+          </h3>
 
           ${
-            safeUrl(
-              x.image_url
-            )
-
-            ?
-
-            `
-            <img
-              src="${esc(
-                safeUrl(
-                  x.image_url
-                )
-              )}"
-              alt="${esc(
-                [x.name,x.surname]
-                  .filter(Boolean)
-                  .join(' ')
-              )}"
-              loading="lazy"
-            >
-            `
-
-            :
-
-            esc(
-              (x.name||'?')
-                .slice(0,1)
-            )
+            x.bio
+              ? `
+                <p class="editor-bio">
+                  ${esc(x.bio)}
+                </p>
+              `
+              : ''
           }
-
+        </article>
+      `).join('')
+    : `
+        <div class="empty">
+          أضف المحررين
+          من لوحة التحكم.
         </div>
-
-        <h3>
-
-          ${esc(
-
-            [x.name,x.surname]
-              .filter(Boolean)
-              .join(' ')
-
-          )}
-
-        </h3>
-
-        ${
-          x.bio
-
-          ?
-
-          `
-          <p class="editor-bio">
-            ${esc(x.bio)}
-          </p>
-          `
-
-          :
-
-          ''
-        }
-
-      </article>
-
-    `).join('')
-
-    :
-
-    `
-    <div class="empty">
-
-      أضف المحررين
-      من لوحة التحكم.
-
-    </div>
-    `;
-
+      `;
 }
 
 
@@ -1041,28 +643,13 @@ function renderEditors(items){
    ARTICLE READER
 ========================================================= */
 
-function createArticleReader(){
+function createArticleReader() {
+  if (document.getElementById('ccArticleReader')) return;
 
-  if(
-    document.getElementById(
-      'ccArticleReader'
-    )
-  ){
+  const reader = document.createElement('div');
+  reader.id = 'ccArticleReader';
 
-    return;
-
-  }
-
-  const reader=
-    document.createElement(
-      'div'
-    );
-
-  reader.id=
-    'ccArticleReader';
-
-  reader.innerHTML=`
-
+  reader.innerHTML = `
     <div
       class="cc-reader-backdrop"
       data-close-reader
@@ -1074,7 +661,6 @@ function createArticleReader(){
       aria-modal="true"
       aria-label="قراءة المقال"
     >
-
       <button
         class="cc-reader-close"
         type="button"
@@ -1088,45 +674,25 @@ function createArticleReader(){
         class="cc-reader-inner"
         id="ccArticleContent"
       ></div>
-
     </article>
-
   `;
 
-  document.body.appendChild(
-    reader
-  );
+  document.body.appendChild(reader);
 
-  reader
-    .querySelectorAll(
-      '[data-close-reader]'
-    )
-    .forEach(button=>{
+  reader.querySelectorAll('[data-close-reader]').forEach(button => {
+    button.onclick = closeArticle;
+  });
 
-      button.onclick=closeArticle;
-
-    });
-
-  document.addEventListener(
-    'keydown',
-    e=>{
-
-      if(
-        e.key==='Escape' &&
-        reader.classList.contains(
-          'is-open'
-        )
-      ){
-
-        closeArticle();
-
-      }
-
+  document.addEventListener('keydown', e => {
+    if (
+      e.key === 'Escape' &&
+      reader.classList.contains('is-open')
+    ) {
+      closeArticle();
     }
-  );
+  });
 
   addArticleReaderStyles();
-
 }
 
 
@@ -1134,28 +700,13 @@ function createArticleReader(){
    ARTICLE READER STYLES
 ========================================================= */
 
-function addArticleReaderStyles(){
+function addArticleReaderStyles() {
+  if (document.getElementById('ccArticleReaderStyles')) return;
 
-  if(
-    document.getElementById(
-      'ccArticleReaderStyles'
-    )
-  ){
+  const style = document.createElement('style');
+  style.id = 'ccArticleReaderStyles';
 
-    return;
-
-  }
-
-  const style=
-    document.createElement(
-      'style'
-    );
-
-  style.id=
-    'ccArticleReaderStyles';
-
-  style.textContent=`
-
+  style.textContent = `
     #ccArticleReader{
       position:fixed;
       inset:0;
@@ -1177,28 +728,16 @@ function addArticleReaderStyles(){
 
     .cc-reader{
       position:relative;
-      width:min(
-        100%,
-        980px
-      );
+      width:min(100%, 980px);
       min-height:100vh;
       margin:0 auto;
       background:var(--reader-bg);
-      box-shadow:
-        0 20px 70px
-        rgba(0,0,0,.25);
+      box-shadow:0 20px 70px rgba(0,0,0,.25);
     }
 
     .cc-reader-inner{
       width:100%;
-      padding:
-        70px
-        clamp(
-          24px,
-          7vw,
-          70px
-        )
-        100px;
+      padding:70px clamp(24px, 7vw, 70px) 100px;
     }
 
     .cc-reader-close{
@@ -1215,9 +754,7 @@ function addArticleReaderStyles(){
       font-size:30px;
       line-height:1;
       cursor:pointer;
-      box-shadow:
-        0 5px 20px
-        rgba(0,0,0,.2);
+      box-shadow:0 5px 20px rgba(0,0,0,.2);
     }
 
     .cc-article-category{
@@ -1229,12 +766,7 @@ function addArticleReaderStyles(){
 
     .cc-article-title{
       margin:0 0 20px;
-      font-size:
-        clamp(
-          30px,
-          5vw,
-          56px
-        );
+      font-size:clamp(30px, 5vw, 56px);
       line-height:1.25;
       font-weight:800;
       color:var(--reader-ink);
@@ -1247,6 +779,16 @@ function addArticleReaderStyles(){
     }
 
     .cc-author-link:hover{
+      text-decoration:underline;
+    }
+
+    .cc-card-author-link{
+      color:inherit;
+      text-decoration:none;
+    }
+
+    .cc-card-author-link:hover{
+      color:var(--red);
       text-decoration:underline;
     }
 
@@ -1282,8 +824,7 @@ function addArticleReaderStyles(){
 
     .cc-article-hero{
       width:100%;
-      margin:
-        0 0 42px;
+      margin:0 0 42px;
       overflow:hidden;
     }
 
@@ -1296,19 +837,13 @@ function addArticleReaderStyles(){
     }
 
     .cc-article-body{
-      font-size:
-        clamp(
-          18px,
-          2vw,
-          21px
-        );
+      font-size:clamp(18px, 2vw, 21px);
       line-height:2;
       color:var(--reader-ink);
     }
 
     .cc-article-body p{
-      margin:
-        0 0 26px;
+      margin:0 0 26px;
       max-inline-size:34em;
       margin-inline:auto;
       text-align:justify;
@@ -1337,9 +872,7 @@ function addArticleReaderStyles(){
 
     .cc-article-image{
       width:100%;
-      margin:
-        44px
-        0;
+      margin:44px 0;
     }
 
     .cc-article-image img{
@@ -1399,10 +932,7 @@ function addArticleReaderStyles(){
       font-weight:600;
       line-height:1;
       cursor:pointer;
-      transition:
-        background .18s,
-        border-color .18s,
-        color .18s;
+      transition:background .18s, border-color .18s, color .18s;
     }
 
     .cc-share-btn svg{
@@ -1428,12 +958,8 @@ function addArticleReaderStyles(){
     }
 
     @media(max-width:700px){
-
       .cc-reader-inner{
-        padding:
-          60px
-          20px
-          60px;
+        padding:60px 20px 60px;
       }
 
       .cc-reader-close{
@@ -1454,9 +980,7 @@ function addArticleReaderStyles(){
       }
 
       .cc-article-image{
-        margin:
-          34px
-          0;
+        margin:34px 0;
       }
 
       .cc-share{
@@ -1467,15 +991,10 @@ function addArticleReaderStyles(){
         padding:8px 11px;
         font-size:12px;
       }
-
     }
-
   `;
 
-  document.head.appendChild(
-    style
-  );
-
+  document.head.appendChild(style);
 }
 
 
@@ -1483,105 +1002,67 @@ function addArticleReaderStyles(){
    ARTICLE CONTENT
 ========================================================= */
 
-function articleParagraphs(
-  content
-){
-
-  if(!content){
-
-    return [];
-
-  }
+function articleParagraphs(content) {
+  if (!content) return [];
 
   return String(content)
-    .replace(
-      /\r\n/g,
-      '\n'
-    )
-    .split(
-      /\n\s*\n/
-    )
-    .map(
-      p=>p.trim()
-    )
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
     .filter(Boolean);
-
 }
 
 
 /* =========================================================
-   ARTICLE IMAGE
+   ARTICLE TEXT
 ========================================================= */
 
-function formatArticleText(text){
-
-  return String(text??'')
-    .replace(/\r\n/g,'\n')
+function formatArticleText(text) {
+  return String(text ?? '')
+    .replace(/\r\n/g, '\n')
     .split('\n')
-    .map(line=>{
+    .map(line => {
+      const safe = esc(line);
 
-      const safe=esc(line);
-
-      if(/^##[ \t]+/.test(line)){
-
+      if (/^##[ \t]+/.test(line)) {
         return safe.replace(
           /^##[ \t]+(.*)$/,
           '<span class="cc-h">$1</span>'
         );
-
       }
 
-      if(/^>[ \t]?/.test(line)&&line.trim()){
-
+      if (/^>[ \t]?/.test(line) && line.trim()) {
         return safe.replace(
           /^&gt;[ \t]?(.*)$/,
           '<span class="cc-quote">$1</span>'
         );
-
       }
 
       return safe;
-
     })
-    .map(line=>
+    .map(line =>
       line.replace(
         /\*\*([^*]+)\*\*/g,
         '<strong>$1</strong>'
       )
     )
     .join(' ');
-
 }
 
+function articleImage(url, alt = '') {
+  const safe = safeUrl(url);
 
-function articleImage(
-  url,
-  alt=''
-){
-
-  const safe=
-    safeUrl(url);
-
-  if(!safe){
-    return '';
-  }
+  if (!safe) return '';
 
   return `
-
-    <figure
-      class="cc-article-image"
-    >
-
+    <figure class="cc-article-image">
       <img
         src="${esc(safe)}"
         alt="${esc(alt)}"
         loading="lazy"
       >
-
     </figure>
-
   `;
-
 }
 
 
@@ -1589,8 +1070,7 @@ function articleImage(
    ARTICLE SHARE
 ========================================================= */
 
-function articleLink(id){
-
+function articleLink(id) {
   return (
     location.origin +
     location.pathname +
@@ -1598,14 +1078,10 @@ function articleLink(id){
     '#article-' +
     encodeURIComponent(id)
   );
-
 }
 
-
-function shareIcon(path){
-
+function shareIcon(path) {
   return `
-
     <svg
       viewBox="0 0 24 24"
       fill="none"
@@ -1615,94 +1091,53 @@ function shareIcon(path){
       stroke-linejoin="round"
       aria-hidden="true"
     >
-
       <path d="${path}"></path>
-
     </svg>
-
   `;
-
 }
 
+function shareBar(article) {
+  const url = articleLink(article.id);
+  const title = article.title || 'ضد السينما !؟';
+  const e = encodeURIComponent;
 
-function shareBar(article){
-
-  const url=
-    articleLink(
-      article.id
-    );
-
-  const title=
-    article.title ||
-    'ضد السينما !؟';
-
-  const e=
-    encodeURIComponent;
-
-  const targets=[
-
+  const targets = [
     {
-      label:'فيسبوك',
-      href:
-        'https://www.facebook.com/sharer/sharer.php?u='+
-        e(url),
-      icon:'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z'
+      label: 'فيسبوك',
+      href: 'https://www.facebook.com/sharer/sharer.php?u=' + e(url),
+      icon: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z'
     },
-
     {
-      label:'X',
-      href:
-        'https://twitter.com/intent/tweet?url='+
-        e(url)+
-        '&text='+
-        e(title),
-      icon:'M4 4l16 16M20 4L4 20'
+      label: 'X',
+      href: 'https://twitter.com/intent/tweet?url=' + e(url) + '&text=' + e(title),
+      icon: 'M4 4l16 16M20 4L4 20'
     },
-
     {
-      label:'واتساب',
-      href:
-        'https://api.whatsapp.com/send?text='+
-        e(title+'\n'+url),
-      icon:'M7.9 20A9 9 0 1 0 4 16.1L2 22Z'
+      label: 'واتساب',
+      href: 'https://api.whatsapp.com/send?text=' + e(title + '\n' + url),
+      icon: 'M7.9 20A9 9 0 1 0 4 16.1L2 22Z'
     },
-
     {
-      label:'تيليجرام',
-      href:
-        'https://t.me/share/url?url='+
-        e(url)+
-        '&text='+
-        e(title),
-      icon:'m22 2-7 20-4-9-9-4Zm0 0L11 13'
+      label: 'تيليجرام',
+      href: 'https://t.me/share/url?url=' + e(url) + '&text=' + e(title),
+      icon: 'm22 2-7 20-4-9-9-4Zm0 0L11 13'
     },
-
     {
-      label:'البريد',
-      href:
-        'mailto:?subject='+
-        e(title)+
-        '&body='+
-        e(url),
-      icon:'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM22 7l-10 5L2 7'
+      label: 'البريد',
+      href: 'mailto:?subject=' + e(title) + '&body=' + e(url),
+      icon: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM22 7l-10 5L2 7'
     }
-
   ];
 
   return `
-
     <div class="cc-share">
-
       <span class="cc-share-label">
         شارك المقال
       </span>
 
       <div class="cc-share-btns">
-
         ${
-          targets.map(
-            t=>`
-
+          targets.map(t => `
             <a
               class="cc-share-btn"
               href="${esc(t.href)}"
@@ -1710,17 +1145,10 @@ function shareBar(article){
               rel="noopener noreferrer"
               aria-label="مشاركة على ${esc(t.label)}"
             >
-
               ${shareIcon(t.icon)}
-
-              <span>
-                ${esc(t.label)}
-              </span>
-
+              <span>${esc(t.label)}</span>
             </a>
-
-          `
-          ).join('')
+          `).join('')
         }
 
         <button
@@ -1729,40 +1157,22 @@ function shareBar(article){
           type="button"
           aria-label="نسخ رابط المقال"
         >
-
           ${shareIcon('M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7')}
-
-          <span>
-            نسخ الرابط
-          </span>
-
+          <span>نسخ الرابط</span>
         </button>
-
       </div>
-
     </div>
-
   `;
-
 }
 
+function legacyCopy(text, onDone) {
+  try {
+    const field = document.createElement('textarea');
 
-function legacyCopy(
-  text,
-  onDone
-){
-
-  try{
-
-    const field=
-      document.createElement(
-        'textarea'
-      );
-
-    field.value=text;
-    field.setAttribute('readonly','');
-    field.style.position='fixed';
-    field.style.top='-1000px';
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
 
     document.body.appendChild(field);
     field.select();
@@ -1772,103 +1182,52 @@ function legacyCopy(
     document.body.removeChild(field);
 
     onDone();
-
-  }catch(e){}
-
+  } catch (e) {}
 }
 
+function bindShareCopy(article) {
+  const button = document.getElementById('ccShareCopy');
 
-function bindShareCopy(article){
+  if (!button) return;
 
-  const button=
-    document.getElementById(
-      'ccShareCopy'
-    );
+  const label = button.querySelector('span');
 
-  if(!button){
-    return;
-  }
-
-  const label=
-    button.querySelector(
-      'span'
-    );
-
-  const done=()=>{
-
-    if(label){
-
-      label.textContent=
-        'تم نسخ الرابط';
-
+  const done = () => {
+    if (label) {
+      label.textContent = 'تم نسخ الرابط';
     }
 
-    button.classList.add(
-      'is-done'
-    );
-
+    button.classList.add('is-done');
   };
 
-  button.onclick=function(){
+  button.onclick = function () {
+    const url = articleLink(article.id);
+    let settled = false;
 
-    const url=
-      articleLink(
-        article.id
-      );
+    const finish = () => {
+      if (settled) return;
 
-    let settled=false;
-
-    const finish=()=>{
-
-      if(settled){
-        return;
-      }
-
-      settled=true;
-
+      settled = true;
       done();
-
     };
 
-    setTimeout(
-      ()=>{
+    setTimeout(() => {
+      if (!settled) {
+        legacyCopy(url, finish);
+      }
+    }, 700);
 
-        if(!settled){
-
-          legacyCopy(
-            url,
-            finish
-          );
-
-        }
-
-      },
-      700
-    );
-
-    if(
-      navigator.clipboard &&
-      navigator.clipboard.writeText
-    ){
-
+    if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard
         .writeText(url)
         .then(finish)
-        .catch(
-          ()=>legacyCopy(url,finish)
-        );
+        .catch(() => legacyCopy(url, finish));
 
       return;
-
     }
 
-    legacyCopy(
-      url,
-      finish
-    );
-
+    legacyCopy(url, finish);
   };
-
 }
 
 
@@ -1876,354 +1235,169 @@ function bindShareCopy(article){
    OPEN ARTICLE
 ========================================================= */
 
-function openArticle(id){
-
+function openArticle(id) {
   createArticleReader();
 
-  const articles=
-    window.__CC_ARTICLES__ ||
-    [];
+  const articles = window.__CC_ARTICLES__ || [];
 
-  const article=
-    articles.find(
-      x=>String(x.id)===String(id)
-    );
-
-  if(!article){
-
-    return;
-
-  }
-
-  Promise.resolve(
-    db.rpc(
-      'increment_views',
-      {article_id:article.id}
-    )
-  )
-    .then(()=>{
-
-      const badge=
-        document.querySelector(
-          '.cc-article-date .views'
-        );
-
-      if(badge){
-        badge.textContent=
-          viewsLabel(
-            (Number(article.views)||0)+1
-          );
-      }
-
-    })
-    .catch(()=>{});
-
-  const target=
-    document.getElementById(
-      'ccArticleContent'
-    );
-
-  if(!target){
-    return;
-  }
-
-  const paragraphs=
-    articleParagraphs(
-      article.content
-    );
-
-  const authorImage=
-    safeUrl(
-      article.author_image
-    );
-
-  const image1=
-    safeUrl(
-      article.image_1
-    );
-
-  const image2=
-    safeUrl(
-      article.image_2
-    );
-
-  const image3=
-    safeUrl(
-      article.image_3
-    );
-
-  const total=
-    paragraphs.length;
-
-  let middleIndex=
-    Math.ceil(
-      total / 2
-    );
-
-  if(total<=2){
-
-    middleIndex=1;
-
-  }
-
-  let body='';
-
-  paragraphs.forEach(
-    (paragraph,index)=>{
-
-      if(
-        image2 &&
-        index===middleIndex
-      ){
-
-        body+=
-          articleImage(
-            image2,
-            article.title
-          );
-
-      }
-
-      if(
-        image3 &&
-        index===total-1
-      ){
-
-        body+=
-          articleImage(
-            image3,
-            article.title
-          );
-
-      }
-
-      body+=`
-
-        <p
-          class="cc-p"
-          ${
-            article.font_family
-              ?
-              `style="font-family:'${esc(
-                article.font_family
-              )}','IBM Plex Sans Arabic',sans-serif"`
-              :
-              ''
-          }
-        >
-          ${formatArticleText(paragraph)}
-        </p>
-
-      `;
-
-    }
+  const article = articles.find(
+    x => String(x.id) === String(id)
   );
 
-  if(!paragraphs.length){
+  if (!article) return;
 
-    body=`
+  Promise.resolve(
+    db.rpc('increment_views', { article_id: article.id })
+  )
+    .then(() => {
+      article.views = (Number(article.views) || 0) + 1;
 
-      <div class="cc-no-content">
+      const badge = document.querySelector('.cc-article-date .views');
 
-        لا يوجد نص لهذا المقال بعد.
-
-      </div>
-
-      ${
-        image2
-        ?
-        articleImage(
-          image2,
-          article.title
-        )
-        :
-        ''
+      if (badge) {
+        badge.textContent = viewsLabel(article.views);
       }
+    })
+    .catch(() => {});
 
-      ${
-        image3
-        ?
-        articleImage(
-          image3,
-          article.title
-        )
-        :
-        ''
-      }
+  const target = document.getElementById('ccArticleContent');
 
-    `;
+  if (!target) return;
 
+  const paragraphs = articleParagraphs(article.content);
+
+  const authorImage = safeUrl(article.author_image);
+  const image1 = safeUrl(article.image_1);
+  const image2 = safeUrl(article.image_2);
+  const image3 = safeUrl(article.image_3);
+
+  const total = paragraphs.length;
+
+  let middleIndex = Math.ceil(total / 2);
+
+  if (total <= 2) {
+    middleIndex = 1;
   }
 
-  target.innerHTML=`
+  let body = '';
 
-    <div
-      class="cc-article-category"
-    >
+  paragraphs.forEach((paragraph, index) => {
+    if (image2 && index === middleIndex) {
+      body += articleImage(image2, article.title);
+    }
 
-      ${esc(
-        article.category ||
-        'نقد سينمائي'
-      )}
+    if (image3 && index === total - 1) {
+      body += articleImage(image3, article.title);
+    }
 
+    body += `
+      <p
+        class="cc-p"
+        ${
+          article.font_family
+            ? `style="font-family:'${esc(article.font_family)}','IBM Plex Sans Arabic',sans-serif"`
+            : ''
+        }
+      >
+        ${formatArticleText(paragraph)}
+      </p>
+    `;
+  });
+
+  if (!paragraphs.length) {
+    body = `
+      <div class="cc-no-content">
+        لا يوجد نص لهذا المقال بعد.
+      </div>
+
+      ${image2 ? articleImage(image2, article.title) : ''}
+      ${image3 ? articleImage(image3, article.title) : ''}
+    `;
+  }
+
+  target.innerHTML = `
+    <div class="cc-article-category">
+      ${esc(article.category || 'نقد سينمائي')}
     </div>
 
-    <h1
-      class="cc-article-title"
-    >
-
-      ${esc(
-        article.title
-      )}
-
+    <h1 class="cc-article-title">
+      ${esc(article.title)}
     </h1>
 
-    <div
-      class="cc-article-author"
-    >
-
+    <div class="cc-article-author">
       ${
         authorImage
-
-        ?
-
-        `
-        <img
-          class="cc-author-photo"
-          src="${esc(authorImage)}"
-          alt="${esc(
-            article.author ||
-            'الكاتب'
-          )}"
-        >
-        `
-
-        :
-
-        `
-        <div
-          class="cc-author-placeholder"
-        >
-
-          ${esc(
-            (
-              article.author ||
-              'ك'
-            ).slice(0,1)
-          )}
-
-        </div>
-        `
+          ? `
+            <img
+              class="cc-author-photo"
+              src="${esc(authorImage)}"
+              alt="${esc(article.author || 'الكاتب')}"
+            >
+          `
+          : `
+            <div class="cc-author-placeholder">
+              ${esc((article.author || 'ك').slice(0, 1))}
+            </div>
+          `
       }
 
       ${
         article.author
-        ?
-
-        `<a
-          class="cc-author-link"
-          href="author.html?name=${
-            encodeURIComponent(article.author)
-          }"
-        >
-          ${esc(article.author)}
-        </a>`
-
-        :
-
-        '<span>هيئة التحرير</span>'
+          ? `
+            <a
+              class="cc-author-link"
+              href="author.html?name=${encodeURIComponent(article.author)}"
+            >
+              ${esc(article.author)}
+            </a>
+          `
+          : '<span>هيئة التحرير</span>'
       }
-
     </div>
 
-    ${
-      image1
+    ${image1 ? articleImage(image1, article.title) : ''}
 
-      ?
-
-      articleImage(
-        image1,
-        article.title
-      )
-
-      :
-
-      ''
-    }
-
-    <div
-      class="cc-article-body"
-    >
-
+    <div class="cc-article-body">
       ${body}
-
     </div>
 
     ${
       article.created_at
+        ? `
+          <div class="cc-article-date">
+            <span>
+              ${formatArticleDate(article.created_at)}
+            </span>
 
-      ?
-
-      `
-      <div
-        class="cc-article-date"
-      >
-
-        <span>
-          ${formatArticleDate(
-            article.created_at
-          )}
-        </span>
-
-        <span class="views">
-          ${viewsLabel(article.views)}
-        </span>
-
-      </div>
-      `
-
-      :
-
-      ''
+            <span class="views">
+              ${viewsLabel(article.views)}
+            </span>
+          </div>
+        `
+        : ''
     }
 
     ${shareBar(article)}
-
   `;
 
-  const reader=
-    document.getElementById(
-      'ccArticleReader'
-    );
+  const reader = document.getElementById('ccArticleReader');
 
-  reader.classList.add(
-    'is-open'
-  );
+  reader.classList.add('is-open');
+  document.body.classList.add('cc-reader-open');
 
-  document.body.classList.add(
-    'cc-reader-open'
-  );
-
-  reader.scrollTop=0;
+  reader.scrollTop = 0;
 
   bindShareCopy(article);
 
-  const hash=
-    '#article-'+
-    encodeURIComponent(article.id);
+  const hash = '#article-' + encodeURIComponent(article.id);
 
-  if(location.hash!==hash){
-
+  if (location.hash !== hash) {
     history.replaceState(
       null,
       '',
-      location.pathname+
-      location.search+
-      hash
+      location.pathname + location.search + hash
     );
-
   }
-
 }
 
 
@@ -2231,40 +1405,21 @@ function openArticle(id){
    CLOSE ARTICLE
 ========================================================= */
 
-function closeArticle(){
+function closeArticle() {
+  const reader = document.getElementById('ccArticleReader');
 
-  const reader=
-    document.getElementById(
-      'ccArticleReader'
-    );
+  if (!reader) return;
 
-  if(!reader){
-    return;
-  }
+  reader.classList.remove('is-open');
+  document.body.classList.remove('cc-reader-open');
 
-  reader.classList.remove(
-    'is-open'
-  );
-
-  document.body.classList.remove(
-    'cc-reader-open'
-  );
-
-  if(
-    location.hash.startsWith(
-      '#article-'
-    )
-  ){
-
+  if (location.hash.startsWith('#article-')) {
     history.replaceState(
       null,
       '',
-      location.pathname +
-      location.search
+      location.pathname + location.search
     );
-
   }
-
 }
 
 
@@ -2272,40 +1427,22 @@ function closeArticle(){
    DATE
 ========================================================= */
 
-function formatArticleDate(
-  value
-){
+function formatArticleDate(value) {
+  try {
+    const date = new Date(value);
 
-  try{
-
-    const date=
-      new Date(value);
-
-    if(
-      Number.isNaN(
-        date.getTime()
-      )
-    ){
-
+    if (Number.isNaN(date.getTime())) {
       return '';
-
     }
 
-    return new Intl.DateTimeFormat(
-      'ar-DZ',
-      {
-        year:'numeric',
-        month:'long',
-        day:'numeric'
-      }
-    ).format(date);
-
-  }catch(e){
-
+    return new Intl.DateTimeFormat('ar-DZ', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
+  } catch (e) {
     return '';
-
   }
-
 }
 
 
@@ -2313,239 +1450,155 @@ function formatArticleDate(
    OPEN ARTICLE FROM SHARED LINK
 ========================================================= */
 
-function openArticleFromHash(){
+function openArticleFromHash() {
+  const hash = location.hash || '';
 
-  const hash=
-    location.hash ||
-    '';
+  if (!hash.startsWith('#article-')) return;
 
-  if(
-    !hash.startsWith(
-      '#article-'
-    )
-  ){
+  let id = hash.slice(9);
 
-    return;
+  try {
+    id = decodeURIComponent(id);
+  } catch (e) {}
 
-  }
-
-  let id=
-    hash.slice(9);
-
-  try{
-
-    id=decodeURIComponent(id);
-
-  }catch(e){}
-
-  if(id){
-
+  if (id) {
     openArticle(id);
-
   }
-
 }
 
 
 /* =========================================================
-   ARCHIVE PAGES (section / author)
+   ARCHIVE PAGES (SECTION / AUTHOR)
 ========================================================= */
 
-async function renderArchivePage(mode){
+async function renderArchivePage(mode) {
+  const params = new URLSearchParams(location.search);
 
-  const params=
-    new URLSearchParams(
-      location.search
-    );
-
-  const key=
-    (mode==='section'
+  const key = (
+    mode === 'section'
       ? params.get('slug')
       : params.get('name')
-    ) || '';
+  ) || '';
 
   const [
     sections,
     articles,
     settings
-  ]=await Promise.all([
+  ] = await Promise.all([
+    get('sections', 'sort_order', true),
 
-    get(
-      'sections',
-      'sort_order',
-      true
-    ),
-
-    get(
-      'articles',
-      'sort_order',
-      true
-    ),
+    get('articles', 'sort_order', true),
 
     db
       .from('settings')
       .select('*')
-      .eq('id',true)
+      .eq('id', true)
       .maybeSingle()
-      .then(
-        r=>r.data||null
-      )
-      .catch(
-        ()=>null
-      )
-
+      .then(r => r.data || null)
+      .catch(() => null)
   ]);
 
-  const titleTarget=
-    $('#pageTitle');
+  const titleTarget = $('#pageTitle');
+  const descTarget = $('#pageDesc');
+  const target = $('#pageArticles');
 
-  const descTarget=
-    $('#pageDesc');
+  if (!titleTarget || !target) return;
 
-  if(!titleTarget){
-    return;
-  }
+  const wanted = normalizeName(key);
 
-  const wanted=
-    key.trim();
+  let list = articles.filter(
+    x => x.visible !== false
+  );
 
-  let list=
-    articles.filter(
-      x=>x.visible!==false
+  if (mode === 'section') {
+    const match = sections.find(
+      s => normalizeName(s.name) === wanted
     );
 
-  if(mode==='section'){
-
-    const match=
-      sections.find(
-        s=>s.name.trim().toLowerCase() === wanted.trim().toLowerCase()
-      );
-
-    list=list.filter(
-      x=> {
-        const cat = (x.category || '').trim().toLowerCase();
-        const w = wanted.trim().toLowerCase();
-        return cat === w || cat.includes(w) || w.includes(cat);
-      }
+    list = list.filter(x =>
+      normalizeName(x.category) === wanted
     );
 
-    titleTarget.textContent=
-      match
-        ? match.name
-        : wanted;
+    titleTarget.textContent = match
+      ? match.name
+      : key;
 
-    if(descTarget && match){
-      descTarget.textContent=
-        match.description || '';
+    if (descTarget) {
+      descTarget.textContent = match
+        ? (match.description || '')
+        : '';
     }
 
-    const eyebrow=
-      $('#pageEyebrow');
+    const eyebrow = $('#pageEyebrow');
 
-    if(eyebrow){
-      eyebrow.textContent='قسم';
+    if (eyebrow) {
+      eyebrow.textContent = 'قسم';
     }
-
-  }else{
-
-    list=list.filter(
-      x=> {
-        const artAuthor = (x.author || '').trim().toLowerCase();
-        const w = wanted.trim().toLowerCase();
-        return artAuthor === w || artAuthor.includes(w) || w.includes(artAuthor);
-      }
+  } else {
+    list = list.filter(x =>
+      normalizeName(x.author) === wanted
     );
 
-    titleTarget.textContent=
-      wanted || 'كاتب';
+    titleTarget.textContent = key || 'كاتب';
 
-    const eyebrow=
-      $('#pageEyebrow');
-
-    if(eyebrow){
-      eyebrow.textContent='كاتب';
+    if (descTarget) {
+      descTarget.textContent = '';
     }
 
+    const eyebrow = $('#pageEyebrow');
+
+    if (eyebrow) {
+      eyebrow.textContent = 'كاتب';
+    }
   }
 
-  document.title=
-    titleTarget.textContent
-    + ' | ضد السينما';
+  document.title = titleTarget.textContent + ' | ضد السينما';
 
-  const target=
-    $('#pageArticles');
+  // تجهيز قارئ المقال والإعدادات حتى لو لم توجد مقالات.
+  createArticleReader();
+  applySiteSettings(settings);
 
-  if(!target){
-    return;
-  }
+  if (!list.length) {
+    window.__CC_ARTICLES__ = [];
 
-  if(!list.length){
-
-    target.innerHTML=`
+    target.innerHTML = `
       <div class="empty">
         لا توجد مقالات منشورة هنا بعد.
       </div>
     `;
 
     return;
-
   }
 
-  window.__CC_ARTICLES__=
-    list;
+  window.__CC_ARTICLES__ = list;
 
-  target.innerHTML=
-    list.map(articleCard)
-      .join('');
+  target.innerHTML = list.map(articleCard).join('');
 
   bindArticleClicks(target);
 
-  createArticleReader();
-
-  applySiteSettings(
-    settings
-  );
-
   openArticleFromHash();
-
-  window.addEventListener(
-    'hashchange',
-    openArticleFromHash
-  );
-
 }
 
 
 /* =========================================================
-   SITE SETTINGS (accent + footer) — all pages
+   SITE SETTINGS (ACCENT + FOOTER)
 ========================================================= */
 
-function applySiteSettings(settings){
+function applySiteSettings(settings) {
+  if (!settings) return;
 
-  if(!settings){
-    return;
+  if (settings.accent_color) {
+    document.documentElement.style.setProperty(
+      '--red',
+      settings.accent_color
+    );
   }
 
-  if(settings.accent_color){
-    document.documentElement
-      .style
-      .setProperty(
-        '--red',
-        settings.accent_color
-      );
+  const footNote = $('#footNote');
+
+  if (footNote && settings.footer_note) {
+    footNote.textContent = settings.footer_note;
   }
-
-  const footNote=
-    $('#footNote');
-
-  if(
-    footNote &&
-    settings.footer_note
-  ){
-    footNote.textContent=
-      settings.footer_note;
-  }
-
 }
 
 
@@ -2553,24 +1606,20 @@ function applySiteSettings(settings){
    MAIN
 ========================================================= */
 
-async function main(){
+async function main() {
+  const path = location.pathname;
 
-  const path=
-    location.pathname;
-
-  if(
+  if (
     path.endsWith('section.html') ||
     path.endsWith('author.html')
-  ){
-
-    renderArchivePage(
+  ) {
+    await renderArchivePage(
       path.endsWith('section.html')
         ? 'section'
         : 'author'
     );
 
     return;
-
   }
 
   const [
@@ -2580,185 +1629,81 @@ async function main(){
     team,
     editors,
     settings
-  ]=await Promise.all([
+  ] = await Promise.all([
+    get('issues', 'issue_number', false),
 
-    get(
-      'issues',
-      'issue_number',
-      false
-    ),
+    get('sections', 'sort_order', true),
 
-    get(
-      'sections',
-      'sort_order',
-      true
-    ),
+    get('articles', 'sort_order', true),
 
-    get(
-      'articles',
-      'sort_order',
-      true
-    ),
+    get('team', 'sort_order', true),
 
-    get(
-      'team',
-      'sort_order',
-      true
-    ),
-
-    get(
-      'editors',
-      'sort_order',
-      true
-    ),
+    get('editors', 'sort_order', true),
 
     db
       .from('settings')
       .select('*')
-      .eq('id',true)
+      .eq('id', true)
       .maybeSingle()
-      .then(
-        r=>r.data||null
-      )
-      .catch(
-        ()=>null
-      )
-
+      .then(r => r.data || null)
+      .catch(() => null)
   ]);
 
-  const all=
-    issues.length
-    ?
-    issues
-    :
-    fallbackIssues;
+  const all = issues.length
+    ? issues
+    : fallbackIssues;
 
-  renderIssues(
-    all
-  );
+  renderIssues(all);
 
-  renderSections(
-    sections
-  );
+  renderSections(sections);
 
   renderArticles(
-    articles.filter(
-      x=>x.visible!==false
-    )
+    articles.filter(x => x.visible !== false)
   );
 
-  renderTeam(
-    team
-  );
+  renderTeam(team);
 
-  renderEditors(
-    editors
-  );
+  renderEditors(editors);
 
-  let current=
-    settings?.current_issue_id
-    ?
-    issues.find(
-      x=>
-        x.id===
-        settings.current_issue_id
-    )
-    :
-    null;
+  let current = settings?.current_issue_id
+    ? issues.find(x => x.id === settings.current_issue_id)
+    : null;
 
-  if(!current){
-
-    current=
-      issues[0] ||
-      null;
-
+  if (!current) {
+    current = issues[0] || null;
   }
 
-  renderCurrent(
-    current
-  );
+  renderCurrent(current);
 
-  if(settings){
-
-    if(
-      settings.site_name
-    ){
-
-      document.title=
-        settings.site_name;
-
+  if (settings) {
+    if (settings.site_name) {
+      document.title = settings.site_name;
     }
 
-    if(
-      settings.hero_title &&
-      $('#heroTitle')
-    ){
-
-      $('#heroTitle')
-        .textContent=
-          settings.hero_title;
-
+    if (settings.hero_title && $('#heroTitle')) {
+      $('#heroTitle').textContent = settings.hero_title;
     }
 
-    if(
-      settings.hero_subtitle &&
-      $('#heroDesc')
-    ){
-
-      $('#heroDesc')
-        .textContent=
-          settings.hero_subtitle;
-
+    if (settings.hero_subtitle && $('#heroDesc')) {
+      $('#heroDesc').textContent = settings.hero_subtitle;
     }
 
-    if(
-      settings.about_title &&
-      $('#aboutTitle')
-    ){
-
-      $('#aboutTitle')
-        .textContent=
-          settings.about_title;
-
+    if (settings.about_title && $('#aboutTitle')) {
+      $('#aboutTitle').textContent = settings.about_title;
     }
 
-    if(
-      settings.about_text &&
-      $('#aboutText')
-    ){
-
-      $('#aboutText')
-        .textContent=
-          settings.about_text;
-
+    if (settings.about_text && $('#aboutText')) {
+      $('#aboutText').textContent = settings.about_text;
     }
 
-    if(
-      settings.about_text_2 &&
-      $('#aboutText2')
-    ){
-
-      $('#aboutText2')
-        .textContent=
-          settings.about_text_2;
-
+    if (settings.about_text_2 && $('#aboutText2')) {
+      $('#aboutText2').textContent = settings.about_text_2;
     }
 
-    if(
-      settings.contact_email &&
-      $('#contactEmail')
-    ){
-
-      $('#contactEmail').href=
-        'mailto:'+
-        settings.contact_email;
-
-      $('#contactEmail')
-        .textContent=
-          settings.contact_email;
-
+    if (settings.contact_email && $('#contactEmail')) {
+      $('#contactEmail').href = 'mailto:' + settings.contact_email;
+      $('#contactEmail').textContent = settings.contact_email;
     }
-
   }
 
   applySiteSettings(settings);
@@ -2767,11 +1712,12 @@ async function main(){
 
   openArticleFromHash();
 
-  window.addEventListener(
-    'hashchange',
-    openArticleFromHash
-  );
+  // مستمع واحد فقط، دون تكراره عند استدعاء main.
+  if (!window.__CC_HASH_LISTENER__) {
+    window.__CC_HASH_LISTENER__ = true;
 
+    window.addEventListener('hashchange', openArticleFromHash);
+  }
 }
 
 
@@ -2780,5 +1726,4 @@ async function main(){
 ========================================================= */
 
 initTheme();
-
 main();
