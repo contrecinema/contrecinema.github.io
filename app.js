@@ -1,4 +1,4 @@
-Const SUPABASE_URL='https://icbfpfrzvdfmgunzlduu.supabase.co';
+const SUPABASE_URL='https://icbfpfrzvdfmgunzlduu.supabase.co';
 const SUPABASE_KEY='sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 
 const db=supabase.createClient(
@@ -229,7 +229,7 @@ const fallbackSections=[
 
 
 /* =========================================================
-   DATABASE GET
+   DATABASE GET (مع معالجة استجابة الـ RLS والبيانات)
 ========================================================= */
 
 async function get(
@@ -784,12 +784,6 @@ function renderArticles(items){
 
   }
 
-  /*
-    نحفظ المقالات كاملة في الذاكرة
-    حتى نستطيع فتح المقال فوراً
-    دون طلب جديد من Supabase.
-  */
-
   window.__CC_ARTICLES__=
     items;
 
@@ -797,10 +791,6 @@ function renderArticles(items){
     items
       .map(articleCard)
       .join('');
-
-  /*
-    click
-  */
 
   bindArticleClicks(target);
 
@@ -1107,10 +1097,6 @@ function createArticleReader(){
     reader
   );
 
-  /*
-    Close buttons
-  */
-
   reader
     .querySelectorAll(
       '[data-close-reader]'
@@ -1120,10 +1106,6 @@ function createArticleReader(){
       button.onclick=closeArticle;
 
     });
-
-  /*
-    Escape
-  */
 
   document.addEventListener(
     'keydown',
@@ -1142,10 +1124,6 @@ function createArticleReader(){
 
     }
   );
-
-  /*
-    Inject styles only once.
-  */
 
   addArticleReaderStyles();
 
@@ -1327,13 +1305,6 @@ function addArticleReaderStyles(){
       line-height:2;
       color:var(--reader-ink);
     }
-
-    /*
-      تنضيد المتن:
-      سقف مقياس 34em متسق عبر الشاشات
-      + شد عربي بالنقاط المرنة المتاحة للمتصفح (فراغات، inter-word)
-      + كسر أسطر محسّن (pretty) حيث تدعمه المحركات.
-    */
 
     .cc-article-body p{
       margin:
@@ -1522,11 +1493,6 @@ function articleParagraphs(
 
   }
 
-  /*
-    نحافظ على الفقرات.
-    المستخدم يفصل الفقرات بسطر فارغ.
-  */
-
   return String(content)
     .replace(
       /\r\n/g,
@@ -1546,12 +1512,6 @@ function articleParagraphs(
 /* =========================================================
    ARTICLE IMAGE
 ========================================================= */
-
-/*
-  تنسيق نص المقال:
-  escape أولاً ثم رموز بسيطة
-  **عريض** / ## عنوان / > اقتباس
-*/
 
 function formatArticleText(text){
 
@@ -1589,10 +1549,6 @@ function formatArticleText(text){
         '<strong>$1</strong>'
       )
     )
-    /*
-      الأسطر داخل الفقرة تُدمج بفراغ (كسر مرن)
-      بدل <br> إجباري.
-    */
     .join(' ');
 
 }
@@ -1874,11 +1830,6 @@ function bindShareCopy(article){
 
     };
 
-    /*
-      في بعض المتصفحات لا تُكمل كتابة الحافظة،
-      لذا نُبقي المسار القديم احتياطاً بعد مهلة قصيرة.
-    */
-
     setTimeout(
       ()=>{
 
@@ -1944,11 +1895,6 @@ function openArticle(id){
 
   }
 
-  /*
-    عدّاد القراءات — RPC آمن
-    (لا تحديث مباشر للعموم).
-  */
-
   Promise.resolve(
     db.rpc(
       'increment_views',
@@ -2006,14 +1952,6 @@ function openArticle(id){
       article.image_3
     );
 
-  /*
-    الصورة الثانية:
-    توضع في منتصف المقال تقريباً.
-
-    الصورة الثالثة:
-    توضع قبل الفقرة الأخيرة.
-  */
-
   const total=
     paragraphs.length;
 
@@ -2021,11 +1959,6 @@ function openArticle(id){
     Math.ceil(
       total / 2
     );
-
-  /*
-    إذا كان المقال قصيراً جداً،
-    لا نضع الصورة الثانية قبل البداية.
-  */
 
   if(total<=2){
 
@@ -2037,11 +1970,6 @@ function openArticle(id){
 
   paragraphs.forEach(
     (paragraph,index)=>{
-
-      /*
-        الصورة الثانية
-        قبل الفقرة الوسطى.
-      */
 
       if(
         image2 &&
@@ -2055,11 +1983,6 @@ function openArticle(id){
           );
 
       }
-
-      /*
-        الصورة الثالثة
-        قبل الفقرة الأخيرة.
-      */
 
       if(
         image3 &&
@@ -2095,11 +2018,6 @@ function openArticle(id){
 
     }
   );
-
-  /*
-    إذا لم يكن هناك نص مقسم إلى فقرات
-    لكن توجد صورة ثانية أو ثالثة.
-  */
 
   if(!paragraphs.length){
 
@@ -2273,10 +2191,6 @@ function openArticle(id){
 
   `;
 
-  /*
-    Open
-  */
-
   const reader=
     document.getElementById(
       'ccArticleReader'
@@ -2290,22 +2204,9 @@ function openArticle(id){
     'cc-reader-open'
   );
 
-  /*
-    Start from article top.
-  */
-
   reader.scrollTop=0;
 
-  /*
-    Share bar: copy-link button.
-  */
-
   bindShareCopy(article);
-
-  /*
-    Keep the article addressable,
-    so shared links point to it.
-  */
 
   const hash=
     '#article-'+
@@ -2348,10 +2249,6 @@ function closeArticle(){
   document.body.classList.remove(
     'cc-reader-open'
   );
-
-  /*
-    Clear URL hash if any.
-  */
 
   if(
     location.hash.startsWith(
@@ -2726,10 +2623,6 @@ async function main(){
 
   ]);
 
-  /*
-    Issues
-  */
-
   const all=
     issues.length
     ?
@@ -2741,17 +2634,9 @@ async function main(){
     all
   );
 
-  /*
-    Sections
-  */
-
   renderSections(
     sections
   );
-
-  /*
-    Articles
-  */
 
   renderArticles(
     articles.filter(
@@ -2759,25 +2644,13 @@ async function main(){
     )
   );
 
-  /*
-    Team
-  */
-
   renderTeam(
     team
   );
 
-  /*
-    Editors
-  */
-
   renderEditors(
     editors
   );
-
-  /*
-    Current issue
-  */
 
   let current=
     settings?.current_issue_id
@@ -2801,10 +2674,6 @@ async function main(){
   renderCurrent(
     current
   );
-
-  /*
-    Site settings
-  */
 
   if(settings){
 
@@ -2891,17 +2760,7 @@ async function main(){
 
   applySiteSettings(settings);
 
-  /*
-    Create reader now so the first
-    article opens instantly.
-  */
-
   createArticleReader();
-
-  /*
-    Shared links: open the article
-    when the page loads with a hash.
-  */
 
   openArticleFromHash();
 
