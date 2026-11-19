@@ -469,6 +469,7 @@ function articleCard(x) {
                   class="cc-card-author-link"
                   href="author.html?name=${encodeURIComponent(x.author)}"
                   data-author-link
+                  data-no-translate="1"
                 >
                   ${esc(x.author)}
                 </a>
@@ -568,7 +569,7 @@ function renderTeam(items) {
             }
           </div>
 
-          <h3>${esc(x.name)}</h3>
+          <h3 data-no-translate="1">${esc(x.name)}</h3>
 
           <div class="role">
             ${esc(x.role || '')}
@@ -614,7 +615,7 @@ function renderEditors(items) {
             }
           </div>
 
-          <h3>
+          <h3 data-no-translate="1">
             ${esc([x.name, x.surname].filter(Boolean).join(' '))}
           </h3>
 
@@ -1346,6 +1347,7 @@ function openArticle(id) {
             <a
               class="cc-author-link"
               href="author.html?name=${encodeURIComponent(article.author)}"
+              data-no-translate="1"
             >
               ${esc(article.author)}
             </a>
@@ -1543,6 +1545,7 @@ async function renderArchivePage(mode) {
     );
 
     titleTarget.textContent = key || 'كاتب';
+    titleTarget.setAttribute('data-no-translate', '1');
 
     if (descTarget) {
       descTarget.textContent = '';
@@ -1606,12 +1609,42 @@ function applySiteSettings(settings) {
 
 
 /* =========================================================
-   MULTILINGUAL SYSTEM (AR / FR / EN) WITH CACHE
+   MULTILINGUAL SYSTEM (AR / FR / EN) WITH CACHE & FILM/AUTHOR RULES
 ========================================================= */
 
 const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v1_';
+const CC_CACHE_PREFIX = 'cc_tr_v2_';
 const CC_MEMORY_CACHE = new Map();
+
+// قاموس أسماء الكتّاب والمحررين (المفتاح بالاسم الموحد، والقيمة بالصيغة المعتمدة دون ترجمة حرفية)
+const AUTHORS_MAP = {
+  // مثال: 'حكيم محمدي': { fr: 'Mohammedi Hakim', en: 'Mohammedi Hakim' }
+};
+
+// قاموس مطابقة عناوين الأفلام في اللغتين الفرنسية والإنجليزية
+const FILM_TITLES_MAP = {
+  [normalizeName('الحريف')]: {
+    fr: 'Le Joueur de rue',
+    en: 'The Street Player'
+  },
+  [normalizeName('رقية')]: {
+    fr: 'Ruqaya',
+    en: 'Ruqaya'
+  }
+};
+
+function clearLegacyTranslationCache() {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('cc_tr_v1_')) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+}
 
 function getCurrentLang() {
   try {
@@ -1663,16 +1696,52 @@ function writeCachedTranslation(lang, text, translated) {
   } catch (e) {}
 }
 
-async function translateText(text, targetLang) {
+function matchMappedFilmTitle(cleanText, targetLang) {
+  const norm = normalizeName(cleanText);
+  if (FILM_TITLES_MAP[norm] && FILM_TITLES_MAP[norm][targetLang]) {
+    return FILM_TITLES_MAP[norm][targetLang];
+  }
+
+  // مطابقة العناوين المحصورة بين علامتي اقتباس أو «» داخل عنوان مقال أو فقرة
+  let out = cleanText.replace(/«([^»]+)»|"([^"]+)"/g, (full, arQuote, enQuote) => {
+    const inner = (arQuote || enQuote || '').trim();
+    const mapped = FILM_TITLES_MAP[normalizeName(inner)];
+    if (mapped && mapped[targetLang]) {
+      return arQuote ? `«${mapped[targetLang]}»` : `"${mapped[targetLang]}"`;
+    }
+    return full;
+  });
+
+  return out !== cleanText ? out : null;
+}
+
+async function translateText(text, targetLang, el = null) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return text;
 
+  // 1. إذا كان العنصر اسم كاتب أو محرر: نبقيه كما هو أو نستخدم الصيغة المعتمدة من AUTHORS_MAP
+  if (el && (el.hasAttribute('data-no-translate') || el.closest('[data-no-translate]'))) {
+    const normAuthor = normalizeName(clean);
+    if (AUTHORS_MAP[normAuthor] && AUTHORS_MAP[normAuthor][targetLang]) {
+      return text.replace(clean, AUTHORS_MAP[normAuthor][targetLang]);
+    }
+    return text;
+  }
+
+  // 2. مطابقة عناوين الأفلام المعروفة بدلاً من الترجمة الحرفية
+  const mappedFilm = matchMappedFilmTitle(clean, targetLang);
+  if (mappedFilm !== null) {
+    writeCachedTranslation(targetLang, clean, mappedFilm);
+    return text.replace(clean, mappedFilm);
+  }
+
+  // 3. قراءة الكاش
   const cached = readCachedTranslation(targetLang, clean);
   if (cached !== null) {
     return text.replace(clean, cached);
   }
 
-  // إذا تم تعريف نقطة نهاية ذكاء اصطناعي خارجية (مثل Cloudflare Worker) نستخدمها تلقائياً
+  // 4. نقطة نهاية ذكاء اصطناعي خارجية إن وُجدت
   if (window.CC_AI_TRANSLATE_ENDPOINT) {
     try {
       const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
@@ -1696,6 +1765,7 @@ async function translateText(text, targetLang) {
     } catch (e) {}
   }
 
+  // 5. الترجمة الآلية
   try {
     const url =
       'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
@@ -1721,7 +1791,13 @@ async function translateText(text, targetLang) {
 
 function isTranslatableElement(el) {
   if (!el || !el.textContent || !el.textContent.trim()) return false;
-  if (el.closest('#languageSelect') || el.closest('.brand') || el.closest('footer .foot-logo')) {
+  if (
+    el.closest('#languageSelect') ||
+    el.closest('.brand') ||
+    el.closest('footer .foot-logo') ||
+    el.hasAttribute('data-no-translate') ||
+    el.closest('[data-no-translate]')
+  ) {
     return false;
   }
   if (el.children.length > 0) return false;
@@ -1760,7 +1836,7 @@ async function applyLanguageToDom(lang) {
   async function worker() {
     while (index < batch.length) {
       const current = batch[index++];
-      const translated = await translateText(current.source, lang);
+      const translated = await translateText(current.source, lang, current.el);
       if (getCurrentLang() === lang && current.el.isConnected) {
         current.el.textContent = translated;
       }
@@ -1777,7 +1853,7 @@ async function translateReaderNode(container, lang) {
     if (el.dataset.origText === undefined) {
       el.dataset.origText = el.textContent;
     }
-    const translated = await translateText(el.dataset.origText, lang);
+    const translated = await translateText(el.dataset.origText, lang, el);
     if (getCurrentLang() === lang && el.isConnected) {
       el.textContent = translated;
     }
@@ -1785,6 +1861,8 @@ async function translateReaderNode(container, lang) {
 }
 
 function initLanguageSwitcher() {
+  clearLegacyTranslationCache();
+
   const select = $('#languageSelect');
   const initialLang = getCurrentLang();
   applyHtmlDirection(initialLang);
