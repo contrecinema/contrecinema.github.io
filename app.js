@@ -469,7 +469,7 @@ function articleCard(x) {
                   class="cc-card-author-link"
                   href="author.html?name=${encodeURIComponent(x.author)}"
                   data-author-link
-                  data-no-translate="1"
+                  data-author-name="1"
                 >
                   ${esc(x.author)}
                 </a>
@@ -569,7 +569,7 @@ function renderTeam(items) {
             }
           </div>
 
-          <h3 data-no-translate="1">${esc(x.name)}</h3>
+          <h3 data-author-name="1">${esc(x.name)}</h3>
 
           <div class="role">
             ${esc(x.role || '')}
@@ -615,7 +615,7 @@ function renderEditors(items) {
             }
           </div>
 
-          <h3 data-no-translate="1">
+          <h3 data-author-name="1">
             ${esc([x.name, x.surname].filter(Boolean).join(' '))}
           </h3>
 
@@ -1347,7 +1347,7 @@ function openArticle(id) {
             <a
               class="cc-author-link"
               href="author.html?name=${encodeURIComponent(article.author)}"
-              data-no-translate="1"
+              data-author-name="1"
             >
               ${esc(article.author)}
             </a>
@@ -1545,7 +1545,7 @@ async function renderArchivePage(mode) {
     );
 
     titleTarget.textContent = key || 'كاتب';
-    titleTarget.setAttribute('data-no-translate', '1');
+    titleTarget.setAttribute('data-author-name', '1');
 
     if (descTarget) {
       descTarget.textContent = '';
@@ -1609,20 +1609,29 @@ function applySiteSettings(settings) {
 
 
 /* =========================================================
-   MULTILINGUAL SYSTEM (AR / FR / EN) WITH CACHE & FILM/AUTHOR RULES
+   MULTILINGUAL SYSTEM (AR / FR / EN)
+   - أسماء الكتّاب والمحرّرين بالحرف اللاتيني دون ترجمة لمعناها
+   - مطابقة عناوين الأفلام مع اسمها الرسمي في اللغة المطلوبة
 ========================================================= */
 
 const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v2_';
+const CC_CACHE_PREFIX = 'cc_tr_v4_';
 const CC_MEMORY_CACHE = new Map();
 
-// قاموس أسماء الكتّاب والمحررين (المفتاح بالاسم الموحد، والقيمة بالصيغة المعتمدة دون ترجمة حرفية)
-const AUTHORS_MAP = {
-  // مثال: 'حكيم محمدي': { fr: 'Mohammedi Hakim', en: 'Mohammedi Hakim' }
+// أسماء كتّاب ومحرّرين معتمدة صراحةً بالحرف اللاتيني
+const AUTHORS_LATIN_MAP = {
+  [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
+  [normalizeName('محمدي حكيم')]: 'Mohammedi Hakim',
+  [normalizeName('عامر طارق')]: 'Amer Tariq',
+  [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
 };
 
-// قاموس مطابقة عناوين الأفلام في اللغتين الفرنسية والإنجليزية
-const FILM_TITLES_MAP = {
+// عناوين الأفلام الرسمية حسب اللغة (fr / en) بدلاً من الترجمة الحرفية
+const FILM_OFFICIAL_TITLES = {
+  [normalizeName('غرق')]: {
+    fr: 'Sink',
+    en: 'Sink'
+  },
   [normalizeName('الحريف')]: {
     fr: 'Le Joueur de rue',
     en: 'The Street Player'
@@ -1633,12 +1642,75 @@ const FILM_TITLES_MAP = {
   }
 };
 
-function clearLegacyTranslationCache() {
+// نقل صوتي للحروف العربية إلى لاتينية إذا لم يكن الاسم موجوداً في القاموس
+function transliterateArabicName(name) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return raw;
+
+  const norm = normalizeName(raw);
+  if (AUTHORS_LATIN_MAP[norm]) {
+    return AUTHORS_LATIN_MAP[norm];
+  }
+
+  // إذا كان الاسم مكتوباً أصلاً بالحروف اللاتينية نعيده كما هو
+  if (!/[\u0600-\u06FF]/.test(raw)) {
+    return raw;
+  }
+
+  const digraphs = [
+    ['ال', 'El '],
+    ['تش', 'Ch'],
+    ['ث', 'Th'],
+    ['خ', 'Kh'],
+    ['ذ', 'Dh'],
+    ['ش', 'Ch'],
+    ['غ', 'Gh']
+  ];
+
+  const singleMap = {
+    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ء': '',
+    'ب': 'b', 'ت': 't', 'ج': 'j', 'ح': 'h', 'د': 'd',
+    'ر': 'r', 'ز': 'z', 'س': 's', 'ص': 's', 'ض': 'd',
+    'ط': 't', 'ظ': 'z', 'ع': '', 'ف': 'f', 'ق': 'q',
+    'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h',
+    'و': 'w', 'ي': 'y', 'ى': 'a', 'ة': 'a'
+  };
+
+  return raw.split(/\s+/).filter(Boolean).map(word => {
+    let i = 0;
+    let out = '';
+    while (i < word.length) {
+      let matched = false;
+      for (const [arSeq, latSeq] of digraphs) {
+        if (word.startsWith(arSeq, i)) {
+          out += latSeq;
+          i += arSeq.length;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        const ch = word[i];
+        out += singleMap[ch] !== undefined ? singleMap[ch] : ch;
+        i += 1;
+      }
+    }
+    out = out.trim();
+    return out ? out.charAt(0).toUpperCase() + out.slice(1) : word;
+  }).join(' ');
+}
+
+function clearOldTranslationCache() {
   try {
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith('cc_tr_v1_')) {
+      if (
+        k &&
+        (k.startsWith('cc_tr_v1_') ||
+          k.startsWith('cc_tr_v2_') ||
+          k.startsWith('cc_tr_v3_'))
+      ) {
         keysToRemove.push(k);
       }
     }
@@ -1696,16 +1768,16 @@ function writeCachedTranslation(lang, text, translated) {
   } catch (e) {}
 }
 
-function matchMappedFilmTitle(cleanText, targetLang) {
+function matchOfficialFilmTitle(cleanText, targetLang) {
   const norm = normalizeName(cleanText);
-  if (FILM_TITLES_MAP[norm] && FILM_TITLES_MAP[norm][targetLang]) {
-    return FILM_TITLES_MAP[norm][targetLang];
+  if (FILM_OFFICIAL_TITLES[norm] && FILM_OFFICIAL_TITLES[norm][targetLang]) {
+    return FILM_OFFICIAL_TITLES[norm][targetLang];
   }
 
-  // مطابقة العناوين المحصورة بين علامتي اقتباس أو «» داخل عنوان مقال أو فقرة
-  let out = cleanText.replace(/«([^»]+)»|"([^"]+)"/g, (full, arQuote, enQuote) => {
+  // مطابقة العناوين المحصورة بين علامتي اقتباس أو «» داخل نص أو عنوان
+  const out = cleanText.replace(/«([^»]+)»|"([^"]+)"/g, (full, arQuote, enQuote) => {
     const inner = (arQuote || enQuote || '').trim();
-    const mapped = FILM_TITLES_MAP[normalizeName(inner)];
+    const mapped = FILM_OFFICIAL_TITLES[normalizeName(inner)];
     if (mapped && mapped[targetLang]) {
       return arQuote ? `«${mapped[targetLang]}»` : `"${mapped[targetLang]}"`;
     }
@@ -1719,20 +1791,17 @@ async function translateText(text, targetLang, el = null) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return text;
 
-  // 1. إذا كان العنصر اسم كاتب أو محرر: نبقيه كما هو أو نستخدم الصيغة المعتمدة من AUTHORS_MAP
-  if (el && (el.hasAttribute('data-no-translate') || el.closest('[data-no-translate]'))) {
-    const normAuthor = normalizeName(clean);
-    if (AUTHORS_MAP[normAuthor] && AUTHORS_MAP[normAuthor][targetLang]) {
-      return text.replace(clean, AUTHORS_MAP[normAuthor][targetLang]);
-    }
-    return text;
+  // 1. أسماء الكتّاب والمحرّرين تُكتب بالحرف اللاتيني دون ترجمة لمعناها
+  if (el && (el.hasAttribute('data-author-name') || el.closest('[data-author-name]'))) {
+    const latinName = transliterateArabicName(clean);
+    return text.replace(clean, latinName);
   }
 
-  // 2. مطابقة عناوين الأفلام المعروفة بدلاً من الترجمة الحرفية
-  const mappedFilm = matchMappedFilmTitle(clean, targetLang);
-  if (mappedFilm !== null) {
-    writeCachedTranslation(targetLang, clean, mappedFilm);
-    return text.replace(clean, mappedFilm);
+  // 2. مطابقة عناوين الأفلام مع اسمها الرسمي في اللغة المطلوبة
+  const officialFilm = matchOfficialFilmTitle(clean, targetLang);
+  if (officialFilm !== null) {
+    writeCachedTranslation(targetLang, clean, officialFilm);
+    return text.replace(clean, officialFilm);
   }
 
   // 3. قراءة الكاش
@@ -1861,7 +1930,7 @@ async function translateReaderNode(container, lang) {
 }
 
 function initLanguageSwitcher() {
-  clearLegacyTranslationCache();
+  clearOldTranslationCache();
 
   const select = $('#languageSelect');
   const initialLang = getCurrentLang();
