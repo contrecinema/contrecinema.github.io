@@ -1,4 +1,4 @@
-const SUPABASE_URL = 'https://icbfpfrzvdfmgunzlduu.supabase.co';
+Const SUPABASE_URL = 'https://icbfpfrzvdfmgunzlduu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1010,6 +1010,7 @@ async function requestTranslationOnce(text, targetLang) {
     } catch (e) {}
   }
 
+  // 1. المحاولة الأولى عبر Google Translate
   try {
     const url =
       'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
@@ -1018,20 +1019,40 @@ async function requestTranslationOnce(text, targetLang) {
       encodeURIComponent(clean);
 
     const res = await fetch(url);
-    if (!res.ok) return '';
+    if (res.ok) {
+      const data = await res.json();
+      const translated = Array.isArray(data) && Array.isArray(data[0])
+        ? data[0]
+            .map(part => Array.isArray(part) ? part[0] : '')
+            .join('')
+            .trim()
+        : '';
 
-    const data = await res.json();
-    const translated = Array.isArray(data) && Array.isArray(data[0])
-      ? data[0]
-          .map(part => Array.isArray(part) ? part[0] : '')
-          .join('')
-          .trim()
-      : '';
+      if (isValidTranslation(clean, translated)) {
+        return translated;
+      }
+    }
+  } catch (e) {}
 
-    return isValidTranslation(clean, translated) ? translated : '';
-  } catch (e) {
-    return '';
-  }
+  // 2. محاولة احتياطية عبر MyMemory إذا لم تنجح المحاولة الأولى
+  try {
+    const mmUrl =
+      'https://api.mymemory.translated.net/get?q=' +
+      encodeURIComponent(clean) +
+      '&langpair=ar|' +
+      encodeURIComponent(targetLang);
+
+    const mmRes = await fetch(mmUrl);
+    if (mmRes.ok) {
+      const mmData = await mmRes.json();
+      const mmText = String(mmData?.responseData?.translatedText || '').trim();
+      if (isValidTranslation(clean, mmText)) {
+        return mmText;
+      }
+    }
+  } catch (e) {}
+
+  return '';
 }
 
 async function requestTranslation(text, targetLang, retries = 2) {
