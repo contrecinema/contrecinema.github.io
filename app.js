@@ -516,7 +516,6 @@ function renderArticles(items) {
 function bindArticleClicks(target) {
   target.querySelectorAll('[data-article-id]').forEach(card => {
     card.onclick = e => {
-      // الضغط على اسم الكاتب يفتح أرشيف الكاتب ولا يفتح المقال.
       if (e.target.closest('[data-author-link]')) {
         return;
       }
@@ -530,7 +529,6 @@ function bindArticleClicks(target) {
         e.key === 'Enter' ||
         e.key === ' '
       ) {
-        // لا نتدخل في الضغط على رابط الكاتب.
         if (e.target.closest('a')) return;
 
         e.preventDefault();
@@ -733,28 +731,33 @@ function addArticleReaderStyles() {
       margin:0 auto;
       background:var(--reader-bg);
       box-shadow:0 20px 70px rgba(0,0,0,.25);
-    }
-
-    .cc-reader-inner{
-      width:100%;
-      padding:70px clamp(24px, 7vw, 70px) 100px;
+      direction:inherit;
     }
 
     .cc-reader-close{
-      position:fixed;
-      top:20px;
-      right:20px;
-      z-index:10;
-      width:44px;
-      height:44px;
+      position:sticky;
+      top:14px;
+      margin-inline-start:auto;
+      margin-inline-end:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:20;
+      width:42px;
+      height:42px;
       border:0;
       border-radius:50%;
       background:var(--reader-ink);
       color:var(--reader-bg);
-      font-size:30px;
+      font-size:28px;
       line-height:1;
       cursor:pointer;
-      box-shadow:0 5px 20px rgba(0,0,0,.2);
+      box-shadow:0 5px 20px rgba(0,0,0,.25);
+    }
+
+    .cc-reader-inner{
+      width:100%;
+      padding:24px clamp(20px, 7vw, 70px) 100px;
     }
 
     .cc-article-category{
@@ -864,7 +867,7 @@ function addArticleReaderStyles() {
       display:block;
       margin:24px 0;
       padding:14px 22px;
-      border-right:4px solid var(--red);
+      border-inline-start:4px solid var(--red);
       background:var(--surface-2);
       font-size:.95em;
       color:var(--reader-muted);
@@ -959,15 +962,15 @@ function addArticleReaderStyles() {
 
     @media(max-width:700px){
       .cc-reader-inner{
-        padding:60px 20px 60px;
+        padding:18px 20px 60px;
       }
 
       .cc-reader-close{
         top:10px;
-        right:10px;
+        margin-inline-end:10px;
         width:40px;
         height:40px;
-        font-size:27px;
+        font-size:26px;
       }
 
       .cc-article-title{
@@ -1560,7 +1563,6 @@ async function renderArchivePage(mode) {
 
   document.title = titleTarget.textContent + ' | ضد السينما';
 
-  // تجهيز قارئ المقال والإعدادات حتى لو لم توجد مقالات.
   createArticleReader();
   applySiteSettings(settings);
 
@@ -1622,6 +1624,8 @@ const CC_MEMORY_CACHE = new Map();
 const AUTHORS_LATIN_MAP = {
   [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
   [normalizeName('محمدي حكيم')]: 'Mohammedi Hakim',
+  [normalizeName('عبد الرؤوف بن أحمد')]: 'Abdel Raouf Ben Ahmed',
+  [normalizeName('بن أحمد عبد الرؤوف')]: 'Abdel Raouf Ben Ahmed',
   [normalizeName('عامر طارق')]: 'Amer Tariq',
   [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
 };
@@ -1774,7 +1778,6 @@ function matchOfficialFilmTitle(cleanText, targetLang) {
     return FILM_OFFICIAL_TITLES[norm][targetLang];
   }
 
-  // مطابقة العناوين المحصورة بين علامتي اقتباس أو «» داخل نص أو عنوان
   const out = cleanText.replace(/«([^»]+)»|"([^"]+)"/g, (full, arQuote, enQuote) => {
     const inner = (arQuote || enQuote || '').trim();
     const mapped = FILM_OFFICIAL_TITLES[normalizeName(inner)];
@@ -1785,6 +1788,51 @@ function matchOfficialFilmTitle(cleanText, targetLang) {
   });
 
   return out !== cleanText ? out : null;
+}
+
+function getDirectText(el) {
+  let out = '';
+  el.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.textContent;
+    }
+  });
+  return out;
+}
+
+function setDirectText(el, newText) {
+  const textNodes = Array.from(el.childNodes).filter(
+    node => node.nodeType === Node.TEXT_NODE
+  );
+
+  if (textNodes.length === 1) {
+    textNodes[0].textContent = newText;
+    return;
+  }
+
+  const firstNonEmpty = textNodes.find(n => n.textContent.trim()) || textNodes[0];
+  if (firstNonEmpty) {
+    firstNonEmpty.textContent = newText;
+    textNodes.forEach(n => {
+      if (n !== firstNonEmpty && n.textContent.trim()) {
+        n.textContent = '';
+      }
+    });
+  }
+}
+
+function hasDirectTranslatableText(el) {
+  if (!el || !el.textContent || !el.textContent.trim()) return false;
+  if (
+    el.closest('#languageSelect') ||
+    el.closest('.brand') ||
+    el.closest('footer .foot-logo') ||
+    el.hasAttribute('data-no-translate') ||
+    el.closest('[data-no-translate]')
+  ) {
+    return false;
+  }
+  return getDirectText(el).trim().length > 0;
 }
 
 async function translateText(text, targetLang, el = null) {
@@ -1858,21 +1906,6 @@ async function translateText(text, targetLang, el = null) {
   return text;
 }
 
-function isTranslatableElement(el) {
-  if (!el || !el.textContent || !el.textContent.trim()) return false;
-  if (
-    el.closest('#languageSelect') ||
-    el.closest('.brand') ||
-    el.closest('footer .foot-logo') ||
-    el.hasAttribute('data-no-translate') ||
-    el.closest('[data-no-translate]')
-  ) {
-    return false;
-  }
-  if (el.children.length > 0) return false;
-  return true;
-}
-
 async function applyLanguageToDom(lang) {
   applyHtmlDirection(lang);
 
@@ -1881,22 +1914,22 @@ async function applyLanguageToDom(lang) {
     select.value = lang;
   }
 
-  const candidates = Array.from(document.querySelectorAll('body *')).filter(isTranslatableElement);
+  const candidates = Array.from(document.querySelectorAll('body *')).filter(hasDirectTranslatableText);
 
   if (lang === 'ar') {
     candidates.forEach(el => {
-      if (el.dataset.origText !== undefined) {
-        el.textContent = el.dataset.origText;
+      if (el.dataset.origDirectText !== undefined) {
+        setDirectText(el, el.dataset.origDirectText);
       }
     });
     return;
   }
 
   const batch = candidates.map(el => {
-    if (el.dataset.origText === undefined) {
-      el.dataset.origText = el.textContent;
+    if (el.dataset.origDirectText === undefined) {
+      el.dataset.origDirectText = getDirectText(el);
     }
-    return { el, source: el.dataset.origText };
+    return { el, source: el.dataset.origDirectText };
   });
 
   const concurrency = 6;
@@ -1907,7 +1940,7 @@ async function applyLanguageToDom(lang) {
       const current = batch[index++];
       const translated = await translateText(current.source, lang, current.el);
       if (getCurrentLang() === lang && current.el.isConnected) {
-        current.el.textContent = translated;
+        setDirectText(current.el, translated);
       }
     }
   }
@@ -1917,14 +1950,14 @@ async function applyLanguageToDom(lang) {
 
 async function translateReaderNode(container, lang) {
   if (!container || lang === 'ar') return;
-  const targets = Array.from(container.querySelectorAll('*')).filter(isTranslatableElement);
+  const targets = Array.from(container.querySelectorAll('*')).filter(hasDirectTranslatableText);
   for (const el of targets) {
-    if (el.dataset.origText === undefined) {
-      el.dataset.origText = el.textContent;
+    if (el.dataset.origDirectText === undefined) {
+      el.dataset.origDirectText = getDirectText(el);
     }
-    const translated = await translateText(el.dataset.origText, lang, el);
+    const translated = await translateText(el.dataset.origDirectText, lang, el);
     if (getCurrentLang() === lang && el.isConnected) {
-      el.textContent = translated;
+      setDirectText(el, translated);
     }
   }
 }
@@ -2064,7 +2097,6 @@ async function main() {
 
   await applyLanguageToDom(getCurrentLang());
 
-  // مستمع واحد فقط، دون تكراره عند استدعاء main.
   if (!window.__CC_HASH_LISTENER__) {
     window.__CC_HASH_LISTENER__ = true;
 
