@@ -239,3 +239,49 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
     padding: 15px 0 22px;
   }
 }
+
+/* ============ مبدّل اللغة واتجاه التصميم ============ */
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+}
+
+.language-switcher select {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .18s, background .18s;
+}
+
+.language-switcher select:hover,
+.language-switcher select:focus {
+  border-color: var(--red);
+}
+
+html[dir="ltr"] body {
+  text-align: left;
+}
+
+html[dir="ltr"] .topin,
+html[dir="ltr"] .section-head,
+html[dir="ltr"] .about-inner,
+html[dir="ltr"] .contact,
+html[dir="ltr"] .foot {
+  direction: ltr;
+}
+
+.goog-te-banner-frame.skiptranslate,
+.skiptranslate iframe {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
