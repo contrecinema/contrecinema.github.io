@@ -1,6 +1,6 @@
+
 const SUPABASE_URL = 'https://icbfpfrzvdfmgunzlduu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
-
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
@@ -10,7 +10,6 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 addEventListener('error', e => {
   const el = e.target;
-
   if (el && el.tagName === 'IMG' && !el.dataset.broken) {
     el.dataset.broken = '1';
     el.style.display = 'none';
@@ -25,29 +24,18 @@ addEventListener('error', e => {
 const $ = s => document.querySelector(s);
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#039;'
+  '&': '&amp;', '<': '&lt;', '>': '&gt;',
+  '"': '&quot;', "'": '&#039;'
 }[m]));
 
 function safeUrl(url) {
   if (!url) return '';
-
   try {
     const u = new URL(url);
-
-    if (u.protocol === 'https:' || u.protocol === 'http:') {
-      return u.href;
-    }
+    if (u.protocol === 'https:' || u.protocol === 'http:') return u.href;
   } catch (e) {}
-
   return '';
 }
-
-
-/* توحيد الأسماء العربية عند البحث والمقارنة */
 
 function normalizeName(value) {
   return String(value ?? '')
@@ -63,15 +51,13 @@ function normalizeName(value) {
 
 
 /* =========================================================
-   THEME (dark / light) + ADMIN SHORTCUT
+   THEME
 ========================================================= */
 
 function applyTheme(theme) {
-  const dark = theme === 'dark';
-
   document.documentElement.setAttribute(
     'data-theme',
-    dark ? 'dark' : 'light'
+    theme === 'dark' ? 'dark' : 'light'
   );
 }
 
@@ -97,22 +83,14 @@ function initTheme() {
     stored ||
     (window.matchMedia &&
       window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light')
+      ? 'dark' : 'light')
   );
 
   const button = $('#themeToggle');
-
-  if (button) {
-    button.onclick = toggleTheme;
-  }
+  if (button) button.onclick = toggleTheme;
 
   document.addEventListener('keydown', e => {
-    if (
-      e.ctrlKey &&
-      e.shiftKey &&
-      (e.key === 'A' || e.key === 'a')
-    ) {
+    if (e.ctrlKey && e.shiftKey && ['A', 'a'].includes(e.key)) {
       e.preventDefault();
       location.href = 'cc-control.html';
     }
@@ -131,9 +109,7 @@ if ($('#hamb')) {
 }
 
 document.querySelectorAll('#nav a').forEach(a => {
-  a.onclick = () => {
-    document.body.classList.remove('nav-open');
-  };
+  a.onclick = () => document.body.classList.remove('nav-open');
 });
 
 
@@ -141,17 +117,14 @@ document.querySelectorAll('#nav a').forEach(a => {
    FALLBACK DATA
 ========================================================= */
 
-const fallbackIssues = Array.from(
-  { length: 9 },
-  (_, i) => ({
-    id: 'fallback-' + (i + 1),
-    issue_number: i + 1,
-    title: 'العدد ' + (i + 1),
-    publication_date: '',
-    pdf_url: '',
-    cover_image: ''
-  })
-);
+const fallbackIssues = Array.from({ length: 9 }, (_, i) => ({
+  id: 'fallback-' + (i + 1),
+  issue_number: i + 1,
+  title: 'العدد ' + (i + 1),
+  publication_date: '',
+  pdf_url: '',
+  cover_image: ''
+}));
 
 const fallbackSections = [
   'رؤى سينمائية',
@@ -171,10 +144,7 @@ const fallbackSections = [
 
 async function get(table, order = 'created_at', ascending = false) {
   try {
-    const r = await db
-      .from(table)
-      .select('*')
-      .order(order, { ascending });
+    const r = await db.from(table).select('*').order(order, { ascending });
 
     if (r.error) {
       console.error(`Supabase ${table}:`, r.error);
@@ -193,24 +163,14 @@ async function get(table, order = 'created_at', ascending = false) {
    ISSUE COVER
 ========================================================= */
 
-function cover(x, small = false) {
+function cover(x) {
   const image = safeUrl(x.cover_image);
 
   if (image) {
-    return `
-      <img
-        src="${esc(image)}"
-        alt="غلاف العدد ${esc(x.issue_number)}"
-        loading="lazy"
-      >
-    `;
+    return `<img src="${esc(image)}" alt="غلاف العدد ${esc(x.issue_number)}" loading="lazy">`;
   }
 
-  return `
-    <span>
-      العدد ${esc(x.issue_number)}
-    </span>
-  `;
+  return `<span>العدد ${esc(x.issue_number)}</span>`;
 }
 
 
@@ -220,7 +180,6 @@ function cover(x, small = false) {
 
 function renderIssues(items) {
   const target = $('#issuesGrid');
-
   if (!target) return;
 
   const range = $('#issuesRange');
@@ -232,68 +191,38 @@ function renderIssues(items) {
 
     if (nums.length) {
       range.textContent =
-        'من العدد ' +
-        Math.min(...nums) +
-        ' إلى العدد ' +
-        Math.max(...nums);
+        'من العدد ' + Math.min(...nums) +
+        ' إلى العدد ' + Math.max(...nums);
     }
   }
 
-  target.innerHTML = items.map(x => `
-    <article class="issue-card">
-      <div class="issue-cover">
-        ${cover(x, true)}
-      </div>
+  target.innerHTML = items.map(x => {
+    const year = (String(x.publication_date || '').match(/(?:19|20)\d{2}/) || [])[0];
 
-      <div class="issue-body">
-        <strong>
-          العدد
-          ${esc(x.issue_number)}
-          ${
-            (String(x.publication_date || '').match(/(?:19|20)\d{2}/) || [])[0]
-              ? `<span class="issue-year">(${
-                  esc((String(x.publication_date || '').match(/(?:19|20)\d{2}/) || [])[0])
-                })</span>`
-              : ''
-          }
-        </strong>
-
-        <p>
-          ${esc(x.title || 'ضد السينما !؟')}
-          ${
-            x.publication_date
-              ? ' — ' + esc(x.publication_date)
-              : ''
-          }
-        </p>
-
-        <div class="issue-links">
-          ${
-            x.pdf_url
-              ? `
-                <a
-                  class="mini red"
-                  target="_blank"
-                  rel="noopener"
-                  href="${esc(x.pdf_url)}"
-                >
-                  تصفح PDF
-                </a>
-              `
-              : `
-                <span class="mini">
-                  PDF قريباً
-                </span>
-              `
-          }
-
-          <a class="mini" href="#articles">
-            المقالات
-          </a>
+    return `
+      <article class="issue-card">
+        <div class="issue-cover">${cover(x)}</div>
+        <div class="issue-body">
+          <strong>
+            العدد ${esc(x.issue_number)}
+            ${year ? `<span class="issue-year">(${esc(year)})</span>` : ''}
+          </strong>
+          <p>
+            ${esc(x.title || 'ضد السينما !؟')}
+            ${x.publication_date ? ' — ' + esc(x.publication_date) : ''}
+          </p>
+          <div class="issue-links">
+            ${
+              x.pdf_url
+                ? `<a class="mini red" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح PDF</a>`
+                : `<span class="mini">PDF قريباً</span>`
+            }
+            <a class="mini" href="#articles">المقالات</a>
+          </div>
         </div>
-      </div>
-    </article>
-  `).join('');
+      </article>
+    `;
+  }).join('');
 }
 
 
@@ -303,7 +232,6 @@ function renderIssues(items) {
 
 function renderCurrent(x) {
   const target = $('#currentIssue');
-
   if (!target) return;
 
   if (!x) {
@@ -322,55 +250,22 @@ function renderCurrent(x) {
     <div class="current-cover">
       ${
         image
-          ? `
-            <img
-              src="${esc(image)}"
-              alt="غلاف العدد"
-              loading="lazy"
-            >
-          `
-          : `
-            <div class="placeholder-cover">
-              العدد ${esc(x.issue_number)}
-            </div>
-          `
+          ? `<img src="${esc(image)}" alt="غلاف العدد" loading="lazy">`
+          : `<div class="placeholder-cover">العدد ${esc(x.issue_number)}</div>`
       }
     </div>
-
     <div class="current-info">
-      <div class="num">
-        العدد ${esc(x.issue_number)}
-      </div>
-
-      <h3>
-        ${esc(x.title || 'ضد السينما !؟')}
-      </h3>
-
+      <div class="num">العدد ${esc(x.issue_number)}</div>
+      <h3>${esc(x.title || 'ضد السينما !؟')}</h3>
       <p>
-        ${
-          x.publication_date
-            ? esc(x.publication_date)
-            : 'عدد جديد من المجلة المستقلة للنقد السينمائي.'
-        }
+        ${x.publication_date
+          ? esc(x.publication_date)
+          : 'عدد جديد من المجلة المستقلة للنقد السينمائي.'}
       </p>
-
-      <p>
-        تصفح العدد، واقرأ ملفاتنا
-        ومراجعاتنا وحواراتنا السينمائية.
-      </p>
-
+      <p>تصفح العدد، واقرأ ملفاتنا ومراجعاتنا وحواراتنا السينمائية.</p>
       ${
         x.pdf_url
-          ? `
-            <a
-              class="btn primary"
-              target="_blank"
-              rel="noopener"
-              href="${esc(x.pdf_url)}"
-            >
-              تصفح وتحميل العدد PDF
-            </a>
-          `
+          ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح وتحميل العدد PDF</a>`
           : ''
       }
     </div>
@@ -384,7 +279,6 @@ function renderCurrent(x) {
 
 function renderSections(items) {
   const target = $('#sectionsGrid');
-
   if (!target) return;
 
   const a = items.length
@@ -396,18 +290,9 @@ function renderSections(items) {
       }));
 
   target.innerHTML = a.map(x => `
-    <a
-      class="section-card"
-      href="section.html?slug=${encodeURIComponent(x.name)}"
-    >
+    <a class="section-card" href="section.html?slug=${encodeURIComponent(x.name)}">
       <b>${esc(x.name)}</b>
-
-      <p>
-        ${esc(
-          x.description ||
-          'كتابات ومتابعات نقدية حول السينما.'
-        )}
-      </p>
+      <p>${esc(x.description || 'كتابات ومتابعات نقدية حول السينما.')}</p>
     </a>
   `).join('');
 }
@@ -417,8 +302,16 @@ function renderSections(items) {
    ARTICLE CARD
 ========================================================= */
 
-function viewsLabel(n) {
+function viewsLabel(n, lang = 'ar') {
   const v = Number(n) || 0;
+
+  if (lang === 'fr') {
+    return v + (v > 1 ? ' lectures' : ' lecture');
+  }
+
+  if (lang === 'en') {
+    return v + (v === 1 ? ' view' : ' views');
+  }
 
   if (v === 1) return 'قراءة واحدة';
   if (v === 2) return 'قراءتان';
@@ -440,47 +333,23 @@ function articleCard(x) {
     >
       ${
         image
-          ? `
-            <div class="article-card-image">
-              <img
-                src="${esc(image)}"
-                alt="${esc(x.title)}"
-                loading="lazy"
-              >
-            </div>
-          `
+          ? `<div class="article-card-image"><img src="${esc(image)}" alt="${esc(x.title)}" loading="lazy"></div>`
           : ''
       }
-
       <div class="article-card-content">
-        <div class="cat">
-          ${esc(x.category || 'نقد سينمائي')}
-        </div>
-
-        <h3>
-          ${esc(x.title)}
-        </h3>
-
+        <div class="cat">${esc(x.category || 'نقد سينمائي')}</div>
+        <h3>${esc(x.title)}</h3>
         ${
           x.author
-            ? `
-              <small>
-                <a
-                  class="cc-card-author-link"
-                  href="author.html?name=${encodeURIComponent(x.author)}"
-                  data-author-link
-                  data-author-name="1"
-                >
-                  ${esc(x.author)}
-                </a>
-              </small>
-            `
+            ? `<small>
+                 <a class="cc-card-author-link"
+                    href="author.html?name=${encodeURIComponent(x.author)}"
+                    data-author-link
+                    data-author-name="1">${esc(x.author)}</a>
+               </small>`
             : ''
         }
-
-        <small class="views">
-          ${viewsLabel(x.views)}
-        </small>
+        <small class="views">${viewsLabel(x.views)}</small>
       </div>
     </article>
   `;
@@ -493,48 +362,30 @@ function articleCard(x) {
 
 function renderArticles(items) {
   const target = $('#articlesGrid');
-
   if (!target) return;
 
   if (!items.length) {
-    target.innerHTML = `
-      <div class="empty">
-        ستظهر المقالات هنا فور
-        إضافتها من لوحة التحكم.
-      </div>
-    `;
+    target.innerHTML = `<div class="empty">ستظهر المقالات هنا فور إضافتها من لوحة التحكم.</div>`;
     return;
   }
 
   window.__CC_ARTICLES__ = items;
-
   target.innerHTML = items.map(articleCard).join('');
-
   bindArticleClicks(target);
 }
 
 function bindArticleClicks(target) {
   target.querySelectorAll('[data-article-id]').forEach(card => {
     card.onclick = e => {
-      if (e.target.closest('[data-author-link]')) {
-        return;
-      }
-
-      const id = card.dataset.articleId;
-      openArticle(id);
+      if (e.target.closest('[data-author-link]')) return;
+      openArticle(card.dataset.articleId);
     };
 
     card.onkeydown = e => {
-      if (
-        e.key === 'Enter' ||
-        e.key === ' '
-      ) {
+      if (e.key === 'Enter' || e.key === ' ') {
         if (e.target.closest('a')) return;
-
         e.preventDefault();
-
-        const id = card.dataset.articleId;
-        openArticle(id);
+        openArticle(card.dataset.articleId);
       }
     };
   });
@@ -547,7 +398,6 @@ function bindArticleClicks(target) {
 
 function renderTeam(items) {
   const target = $('#teamGrid');
-
   if (!target) return;
 
   target.innerHTML = items.length
@@ -556,34 +406,16 @@ function renderTeam(items) {
           <div class="avatar">
             ${
               safeUrl(x.image_url)
-                ? `
-                  <img
-                    src="${esc(safeUrl(x.image_url))}"
-                    alt="${esc(x.name)}"
-                    loading="lazy"
-                  >
-                `
+                ? `<img src="${esc(x.image_url)}" alt="${esc(x.name)}" loading="lazy">`
                 : esc((x.name || '?').slice(0, 1))
             }
           </div>
-
           <h3 data-author-name="1">${esc(x.name)}</h3>
-
-          <div class="role">
-            ${esc(x.role || '')}
-          </div>
-
-          <p>
-            ${esc(x.bio || '')}
-          </p>
+          <div class="role">${esc(x.role || '')}</div>
+          <p>${esc(x.bio || '')}</p>
         </article>
       `).join('')
-    : `
-        <div class="empty">
-          أضف أعضاء هيئة التحرير
-          من لوحة التحكم.
-        </div>
-      `;
+    : `<div class="empty">أضف أعضاء هيئة التحرير من لوحة التحكم.</div>`;
 }
 
 
@@ -593,47 +425,27 @@ function renderTeam(items) {
 
 function renderEditors(items) {
   const target = $('#editorsGrid');
-
   if (!target) return;
 
   target.innerHTML = items.length
-    ? items.map(x => `
-        <article class="person">
-          <div class="avatar">
-            ${
-              safeUrl(x.image_url)
-                ? `
-                  <img
-                    src="${esc(safeUrl(x.image_url))}"
-                    alt="${esc([x.name, x.surname].filter(Boolean).join(' '))}"
-                    loading="lazy"
-                  >
-                `
-                : esc((x.name || '?').slice(0, 1))
-            }
-          </div>
+    ? items.map(x => {
+        const fullName = [x.name, x.surname].filter(Boolean).join(' ');
 
-          <h3 data-author-name="1">
-            ${esc([x.name, x.surname].filter(Boolean).join(' '))}
-          </h3>
-
-          ${
-            x.bio
-              ? `
-                <p class="editor-bio">
-                  ${esc(x.bio)}
-                </p>
-              `
-              : ''
-          }
-        </article>
-      `).join('')
-    : `
-        <div class="empty">
-          أضف المحررين
-          من لوحة التحكم.
-        </div>
-      `;
+        return `
+          <article class="person">
+            <div class="avatar">
+              ${
+                safeUrl(x.image_url)
+                  ? `<img src="${esc(x.image_url)}" alt="${esc(fullName)}" loading="lazy">`
+                  : esc((x.name || '?').slice(0, 1))
+              }
+            </div>
+            <h3 data-author-name="1">${esc(fullName)}</h3>
+            ${x.bio ? `<p class="editor-bio">${esc(x.bio)}</p>` : ''}
+          </article>
+        `;
+      }).join('')
+    : `<div class="empty">أضف المحررين من لوحة التحكم.</div>`;
 }
 
 
@@ -648,30 +460,10 @@ function createArticleReader() {
   reader.id = 'ccArticleReader';
 
   reader.innerHTML = `
-    <div
-      class="cc-reader-backdrop"
-      data-close-reader
-    ></div>
-
-    <article
-      class="cc-reader"
-      role="dialog"
-      aria-modal="true"
-      aria-label="قراءة المقال"
-    >
-      <button
-        class="cc-reader-close"
-        type="button"
-        aria-label="إغلاق المقال"
-        data-close-reader
-      >
-        ×
-      </button>
-
-      <div
-        class="cc-reader-inner"
-        id="ccArticleContent"
-      ></div>
+    <div class="cc-reader-backdrop" data-close-reader></div>
+    <article class="cc-reader" role="dialog" aria-modal="true" aria-label="قراءة المقال">
+      <button class="cc-reader-close" type="button" aria-label="إغلاق المقال" data-close-reader>×</button>
+      <div class="cc-reader-inner" id="ccArticleContent"></div>
     </article>
   `;
 
@@ -682,10 +474,7 @@ function createArticleReader() {
   });
 
   document.addEventListener('keydown', e => {
-    if (
-      e.key === 'Escape' &&
-      reader.classList.contains('is-open')
-    ) {
+    if (e.key === 'Escape' && reader.classList.contains('is-open')) {
       closeArticle();
     }
   });
@@ -705,295 +494,47 @@ function addArticleReaderStyles() {
   style.id = 'ccArticleReaderStyles';
 
   style.textContent = `
-    #ccArticleReader{
-      position:fixed;
-      inset:0;
-      z-index:99999;
-      display:none;
-      overflow:auto;
-    }
-
-    #ccArticleReader.is-open{
-      display:block;
-    }
-
-    .cc-reader-backdrop{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.72);
-      backdrop-filter:blur(4px);
-    }
-
-    .cc-reader{
-      position:relative;
-      width:min(100%, 980px);
-      min-height:100vh;
-      margin:0 auto;
-      background:var(--reader-bg);
-      box-shadow:0 20px 70px rgba(0,0,0,.25);
-      direction:inherit;
-    }
-
-    .cc-reader-close{
-      position:sticky;
-      top:14px;
-      margin-inline-start:auto;
-      margin-inline-end:14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:20;
-      width:42px;
-      height:42px;
-      border:0;
-      border-radius:50%;
-      background:var(--reader-ink);
-      color:var(--reader-bg);
-      font-size:28px;
-      line-height:1;
-      cursor:pointer;
-      box-shadow:0 5px 20px rgba(0,0,0,.25);
-    }
-
-    .cc-reader-inner{
-      width:100%;
-      padding:24px clamp(20px, 7vw, 70px) 100px;
-    }
-
-    .cc-article-category{
-      margin-bottom:14px;
-      font-size:14px;
-      font-weight:700;
-      color:var(--red);
-    }
-
-    .cc-article-title{
-      margin:0 0 20px;
-      font-size:clamp(30px, 5vw, 56px);
-      line-height:1.25;
-      font-weight:800;
-      color:var(--reader-ink);
-    }
-
-    .cc-author-link{
-      color:var(--reader-accent);
-      font-weight:700;
-      text-decoration:none;
-    }
-
-    .cc-author-link:hover{
-      text-decoration:underline;
-    }
-
-    .cc-card-author-link{
-      color:inherit;
-      text-decoration:none;
-    }
-
-    .cc-card-author-link:hover{
-      color:var(--red);
-      text-decoration:underline;
-    }
-
-    .cc-article-author{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      margin-bottom:30px;
-      font-size:16px;
-      color:var(--reader-muted);
-    }
-
-    .cc-author-photo{
-      width:48px;
-      height:48px;
-      border-radius:50%;
-      object-fit:cover;
-      flex:none;
-    }
-
-    .cc-author-placeholder{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      width:48px;
-      height:48px;
-      border-radius:50%;
-      background:var(--surface-2);
-      color:var(--reader-muted);
-      font-weight:700;
-      flex:none;
-    }
-
-    .cc-article-hero{
-      width:100%;
-      margin:0 0 42px;
-      overflow:hidden;
-    }
-
-    .cc-article-hero img{
-      display:block;
-      width:100%;
-      height:auto;
-      max-height:680px;
-      object-fit:cover;
-    }
-
-    .cc-article-body{
-      font-size:clamp(18px, 2vw, 21px);
-      line-height:2;
-      color:var(--reader-ink);
-    }
-
-    .cc-article-body p{
-      margin:0 0 26px;
-      max-inline-size:34em;
-      margin-inline:auto;
-      text-align:justify;
-      text-align-last:start;
-      text-justify:inter-word;
-      text-wrap:pretty;
-    }
-
-    .cc-article-body .cc-h{
-      display:block;
-      margin:38px 0 14px;
-      font-size:24px;
-      font-weight:800;
-      color:var(--reader-ink);
-    }
-
-    .cc-article-body .cc-quote{
-      display:block;
-      margin:24px 0;
-      padding:14px 22px;
-      border-inline-start:4px solid var(--red);
-      background:var(--surface-2);
-      font-size:.95em;
-      color:var(--reader-muted);
-    }
-
-    .cc-article-image{
-      width:100%;
-      margin:44px 0;
-    }
-
-    .cc-article-image img{
-      display:block;
-      width:100%;
-      height:auto;
-      max-height:700px;
-      object-fit:cover;
-    }
-
-    .cc-article-date{
-      margin-top:35px;
-      padding-top:20px;
-      border-top:1px solid var(--reader-line);
-      font-size:14px;
-      color:var(--reader-muted);
-    }
-
-    .cc-no-content{
-      padding:40px 0;
-      color:var(--reader-muted);
-    }
-
-    .cc-share{
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      gap:14px;
-      margin-top:30px;
-      padding-top:26px;
-      border-top:1px solid var(--reader-line);
-    }
-
-    .cc-share-label{
-      font-size:13px;
-      font-weight:700;
-      letter-spacing:.3px;
-      color:var(--reader-muted);
-    }
-
-    .cc-share-btns{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    .cc-share-btn{
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      padding:9px 13px;
-      border:1px solid var(--reader-line);
-      background:var(--reader-bg);
-      color:var(--reader-muted);
-      font-family:inherit;
-      font-size:13px;
-      font-weight:600;
-      line-height:1;
-      cursor:pointer;
-      transition:background .18s, border-color .18s, color .18s;
-    }
-
-    .cc-share-btn svg{
-      width:16px;
-      height:16px;
-      flex:none;
-    }
-
-    .cc-share-btn:hover{
-      border-color:var(--reader-ink);
-      background:var(--reader-ink);
-      color:var(--reader-bg);
-    }
-
-    .cc-share-btn.is-done{
-      border-color:var(--red);
-      background:var(--red);
-      color:#fff;
-    }
-
-    body.cc-reader-open{
-      overflow:hidden;
-    }
-
+    #ccArticleReader{position:fixed;inset:0;z-index:99999;display:none;overflow:auto}
+    #ccArticleReader.is-open{display:block}
+    .cc-reader-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+    .cc-reader{position:relative;width:min(100%,980px);min-height:100vh;margin:0 auto;background:var(--reader-bg);box-shadow:0 20px 70px rgba(0,0,0,.25);direction:inherit}
+    .cc-reader-close{position:sticky;top:14px;margin-inline-start:auto;margin-inline-end:14px;display:flex;align-items:center;justify-content:center;z-index:20;width:42px;height:42px;border:0;border-radius:50%;background:var(--reader-ink);color:var(--reader-bg);font-size:28px;line-height:1;cursor:pointer;box-shadow:0 5px 20px rgba(0,0,0,.25)}
+    .cc-reader-inner{width:100%;padding:24px clamp(20px,7vw,70px) 100px}
+    .cc-article-category{margin-bottom:14px;font-size:14px;font-weight:700;color:var(--red)}
+    .cc-article-title{margin:0 0 20px;font-size:clamp(30px,5vw,56px);line-height:1.25;font-weight:800;color:var(--reader-ink)}
+    .cc-author-link{color:var(--reader-accent);font-weight:700;text-decoration:none}
+    .cc-author-link:hover{text-decoration:underline}
+    .cc-card-author-link{color:inherit;text-decoration:none}
+    .cc-card-author-link:hover{color:var(--red);text-decoration:underline}
+    .cc-article-author{display:flex;align-items:center;gap:12px;margin-bottom:30px;font-size:16px;color:var(--reader-muted)}
+    .cc-author-photo,.cc-author-placeholder{width:48px;height:48px;border-radius:50%;flex:none}
+    .cc-author-photo{object-fit:cover}
+    .cc-author-placeholder{display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--reader-muted);font-weight:700}
+    .cc-article-hero{width:100%;margin:0 0 42px;overflow:hidden}
+    .cc-article-hero img,.cc-article-image img{display:block;width:100%;height:auto;max-height:700px;object-fit:cover}
+    .cc-article-body{font-size:clamp(18px,2vw,21px);line-height:2;color:var(--reader-ink)}
+    .cc-article-body p{margin:0 auto 26px;max-inline-size:34em;text-align:justify;text-align-last:start;text-justify:inter-word;text-wrap:pretty}
+    .cc-article-body .cc-h{display:block;margin:38px 0 14px;font-size:24px;font-weight:800;color:var(--reader-ink)}
+    .cc-article-body .cc-quote{display:block;margin:24px 0;padding:14px 22px;border-inline-start:4px solid var(--red);background:var(--surface-2);font-size:.95em;color:var(--reader-muted)}
+    .cc-article-image{width:100%;margin:44px 0}
+    .cc-article-date{display:flex;justify-content:space-between;gap:12px;margin-top:35px;padding-top:20px;border-top:1px solid var(--reader-line);font-size:14px;color:var(--reader-muted)}
+    .cc-no-content{padding:40px 0;color:var(--reader-muted)}
+    .cc-share{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:30px;padding-top:26px;border-top:1px solid var(--reader-line)}
+    .cc-share-label{font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--reader-muted)}
+    .cc-share-btns{display:flex;flex-wrap:wrap;gap:8px}
+    .cc-share-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--reader-line);background:var(--reader-bg);color:var(--reader-muted);font-family:inherit;font-size:13px;font-weight:600;line-height:1;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+    .cc-share-btn svg{width:16px;height:16px;flex:none}
+    .cc-share-btn:hover{border-color:var(--reader-ink);background:var(--reader-ink);color:var(--reader-bg)}
+    .cc-share-btn.is-done{border-color:var(--red);background:var(--red);color:#fff}
+    body.cc-reader-open{overflow:hidden}
     @media(max-width:700px){
-      .cc-reader-inner{
-        padding:18px 20px 60px;
-      }
-
-      .cc-reader-close{
-        top:10px;
-        margin-inline-end:10px;
-        width:40px;
-        height:40px;
-        font-size:26px;
-      }
-
-      .cc-article-title{
-        font-size:32px;
-      }
-
-      .cc-article-body{
-        font-size:18px;
-        line-height:1.9;
-      }
-
-      .cc-article-image{
-        margin:34px 0;
-      }
-
-      .cc-share{
-        gap:10px;
-      }
-
-      .cc-share-btn{
-        padding:8px 11px;
-        font-size:12px;
-      }
+      .cc-reader-inner{padding:18px 20px 60px}
+      .cc-reader-close{top:10px;margin-inline-end:10px;width:40px;height:40px;font-size:26px}
+      .cc-article-title{font-size:32px}
+      .cc-article-body{font-size:18px;line-height:1.9}
+      .cc-article-image{margin:34px 0}
+      .cc-share{gap:10px}
+      .cc-share-btn{padding:8px 11px;font-size:12px}
     }
   `;
 
@@ -1015,55 +556,33 @@ function articleParagraphs(content) {
     .filter(Boolean);
 }
 
-
-/* =========================================================
-   ARTICLE TEXT
-========================================================= */
-
 function formatArticleText(text) {
   return String(text ?? '')
     .replace(/\r\n/g, '\n')
     .split('\n')
     .map(line => {
-      const safe = esc(line);
+      let safe = esc(line);
 
       if (/^##[ \t]+/.test(line)) {
-        return safe.replace(
-          /^##[ \t]+(.*)$/,
-          '<span class="cc-h">$1</span>'
-        );
+        safe = safe.replace(/^##[ \t]+(.*)$/, '<span class="cc-h">$1</span>');
       }
 
       if (/^>[ \t]?/.test(line) && line.trim()) {
-        return safe.replace(
-          /^&gt;[ \t]?(.*)$/,
-          '<span class="cc-quote">$1</span>'
-        );
+        safe = safe.replace(/^&gt;[ \t]?(.*)$/, '<span class="cc-quote">$1</span>');
       }
 
-      return safe;
+      return safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     })
-    .map(line =>
-      line.replace(
-        /\*\*([^*]+)\*\*/g,
-        '<strong>$1</strong>'
-      )
-    )
     .join(' ');
 }
 
 function articleImage(url, alt = '') {
   const safe = safeUrl(url);
-
   if (!safe) return '';
 
   return `
     <figure class="cc-article-image">
-      <img
-        src="${esc(safe)}"
-        alt="${esc(alt)}"
-        loading="lazy"
-      >
+      <img src="${esc(safe)}" alt="${esc(alt)}" loading="lazy">
     </figure>
   `;
 }
@@ -1074,39 +593,55 @@ function articleImage(url, alt = '') {
 ========================================================= */
 
 function articleLink(id) {
-  return (
-    location.origin +
-    location.pathname +
-    location.search +
-    '#article-' +
-    encodeURIComponent(id)
-  );
+  return location.origin + location.pathname + location.search +
+    '#article-' + encodeURIComponent(id);
 }
 
 function shareIcon(path) {
   return `
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.7"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
       <path d="${path}"></path>
     </svg>
   `;
 }
 
-function shareBar(article) {
+function shareBar(article, lang = 'ar') {
   const url = articleLink(article.id);
   const title = article.title || 'ضد السينما !؟';
   const e = encodeURIComponent;
 
+  const labels = lang === 'fr'
+    ? {
+        share: 'Partager cet article',
+        facebook: 'Facebook',
+        whatsapp: 'WhatsApp',
+        telegram: 'Telegram',
+        email: 'E-mail',
+        copy: 'Copier le lien'
+      }
+    : lang === 'en'
+      ? {
+          share: 'Share this article',
+          facebook: 'Facebook',
+          whatsapp: 'WhatsApp',
+          telegram: 'Telegram',
+          email: 'Email',
+          copy: 'Copy link'
+        }
+      : {
+          share: 'شارك المقال',
+          facebook: 'فيسبوك',
+          whatsapp: 'واتساب',
+          telegram: 'تيليجرام',
+          email: 'البريد',
+          copy: 'نسخ الرابط'
+        };
+
   const targets = [
     {
-      label: 'فيسبوك',
+      label: labels.facebook,
       href: 'https://www.facebook.com/sharer/sharer.php?u=' + e(url),
       icon: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z'
     },
@@ -1116,17 +651,17 @@ function shareBar(article) {
       icon: 'M4 4l16 16M20 4L4 20'
     },
     {
-      label: 'واتساب',
+      label: labels.whatsapp,
       href: 'https://api.whatsapp.com/send?text=' + e(title + '\n' + url),
       icon: 'M7.9 20A9 9 0 1 0 4 16.1L2 22Z'
     },
     {
-      label: 'تيليجرام',
+      label: labels.telegram,
       href: 'https://t.me/share/url?url=' + e(url) + '&text=' + e(title),
       icon: 'm22 2-7 20-4-9-9-4Zm0 0L11 13'
     },
     {
-      label: 'البريد',
+      label: labels.email,
       href: 'mailto:?subject=' + e(title) + '&body=' + e(url),
       icon: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM22 7l-10 5L2 7'
     }
@@ -1134,34 +669,19 @@ function shareBar(article) {
 
   return `
     <div class="cc-share">
-      <span class="cc-share-label">
-        شارك المقال
-      </span>
-
+      <span class="cc-share-label">${labels.share}</span>
       <div class="cc-share-btns">
-        ${
-          targets.map(t => `
-            <a
-              class="cc-share-btn"
-              href="${esc(t.href)}"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="مشاركة على ${esc(t.label)}"
-            >
-              ${shareIcon(t.icon)}
-              <span>${esc(t.label)}</span>
-            </a>
-          `).join('')
-        }
-
-        <button
-          class="cc-share-btn"
-          id="ccShareCopy"
-          type="button"
-          aria-label="نسخ رابط المقال"
-        >
+        ${targets.map(t => `
+          <a class="cc-share-btn" href="${esc(t.href)}"
+            target="_blank" rel="noopener noreferrer"
+            aria-label="${esc(t.label)}">
+            ${shareIcon(t.icon)}
+            <span>${esc(t.label)}</span>
+          </a>
+        `).join('')}
+        <button class="cc-share-btn" id="ccShareCopy" type="button">
           ${shareIcon('M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7')}
-          <span>نسخ الرابط</span>
+          <span>${labels.copy}</span>
         </button>
       </div>
     </div>
@@ -1171,7 +691,6 @@ function shareBar(article) {
 function legacyCopy(text, onDone) {
   try {
     const field = document.createElement('textarea');
-
     field.value = text;
     field.setAttribute('readonly', '');
     field.style.position = 'fixed';
@@ -1179,27 +698,26 @@ function legacyCopy(text, onDone) {
 
     document.body.appendChild(field);
     field.select();
-
     document.execCommand('copy');
-
     document.body.removeChild(field);
-
     onDone();
   } catch (e) {}
 }
 
-function bindShareCopy(article) {
+function bindShareCopy(article, lang = 'ar') {
   const button = document.getElementById('ccShareCopy');
-
   if (!button) return;
 
   const label = button.querySelector('span');
 
   const done = () => {
     if (label) {
-      label.textContent = 'تم نسخ الرابط';
+      label.textContent = lang === 'fr'
+        ? 'Lien copié'
+        : lang === 'en'
+          ? 'Link copied'
+          : 'تم نسخ الرابط';
     }
-
     button.classList.add('is-done');
   };
 
@@ -1209,23 +727,14 @@ function bindShareCopy(article) {
 
     const finish = () => {
       if (settled) return;
-
       settled = true;
       done();
     };
 
-    setTimeout(() => {
-      if (!settled) {
-        legacyCopy(url, finish);
-      }
-    }, 700);
-
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard
-        .writeText(url)
+      navigator.clipboard.writeText(url)
         .then(finish)
         .catch(() => legacyCopy(url, finish));
-
       return;
     }
 
@@ -1235,12 +744,545 @@ function bindShareCopy(article) {
 
 
 /* =========================================================
+   MULTILINGUAL SYSTEM
+========================================================= */
+
+const CC_LANG_KEY = 'cc-lang';
+const CC_CACHE_PREFIX = 'cc_tr_v7_';
+const CC_MEMORY_CACHE = new Map();
+const CC_ORIGINAL_TEXT_NODES = new WeakMap();
+
+const AUTHORS_LATIN_MAP = {
+  [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
+  [normalizeName('محمدي حكيم')]: 'Mohammedi Hakim',
+  [normalizeName('عبد الرؤوف بن أحمد')]: 'Abdel Raouf Ben Ahmed',
+  [normalizeName('بن أحمد عبد الرؤوف')]: 'Abdel Raouf Ben Ahmed',
+  [normalizeName('عامر طارق')]: 'Amer Tariq',
+  [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
+};
+
+function transliterateArabicName(name) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return raw;
+
+  const norm = normalizeName(raw);
+
+  if (AUTHORS_LATIN_MAP[norm]) {
+    return AUTHORS_LATIN_MAP[norm];
+  }
+
+  if (!/[\u0600-\u06FF]/.test(raw)) return raw;
+
+  const digraphs = [
+    ['ال', 'El '], ['تش', 'Tch'], ['ث', 'Th'],
+    ['خ', 'Kh'], ['ذ', 'Dh'], ['ش', 'Ch'], ['غ', 'Gh']
+  ];
+
+  const singleMap = {
+    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ء': '',
+    'ب': 'b', 'ت': 't', 'ج': 'j', 'ح': 'h', 'د': 'd',
+    'ر': 'r', 'ز': 'z', 'س': 's', 'ص': 's', 'ض': 'd',
+    'ط': 't', 'ظ': 'z', 'ع': '', 'ف': 'f', 'ق': 'q',
+    'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h',
+    'و': 'w', 'ي': 'y', 'ى': 'a', 'ة': 'a'
+  };
+
+  return raw.split(/\s+/).filter(Boolean).map(word => {
+    let i = 0;
+    let out = '';
+
+    while (i < word.length) {
+      let matched = false;
+
+      for (const [arSeq, latSeq] of digraphs) {
+        if (word.startsWith(arSeq, i)) {
+          out += latSeq;
+          i += arSeq.length;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        const ch = word[i];
+        out += singleMap[ch] !== undefined ? singleMap[ch] : ch;
+        i++;
+      }
+    }
+
+    out = out.trim();
+    return out ? out.charAt(0).toUpperCase() + out.slice(1) : word;
+  }).join(' ');
+}
+
+
+/* =========================================================
+   TRANSLATION CACHE
+========================================================= */
+
+function clearOldTranslationCache() {
+  try {
+    const keysToRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+
+      if (
+        key &&
+        /^cc_tr_v[1-6]_/.test(key) &&
+        !key.startsWith(CC_CACHE_PREFIX)
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  } catch (e) {}
+
+  CC_MEMORY_CACHE.clear();
+}
+
+function getCurrentLang() {
+  try {
+    const saved = localStorage.getItem(CC_LANG_KEY);
+    if (saved === 'fr' || saved === 'en' || saved === 'ar') return saved;
+  } catch (e) {}
+
+  return 'ar';
+}
+
+function applyHtmlDirection(lang) {
+  const isAr = lang === 'ar';
+  document.documentElement.lang = lang;
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  document.body.dir = isAr ? 'rtl' : 'ltr';
+}
+
+function cacheKeyFor(lang, text) {
+  let hash = 2166136261;
+  const str = lang + '::' + text;
+
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return CC_CACHE_PREFIX + lang + '_' + (hash >>> 0).toString(16);
+}
+
+function isValidTranslation(original, translated) {
+  const source = String(original ?? '').trim();
+  const result = String(translated ?? '').trim();
+
+  if (!source || !result || result === source) return false;
+
+  if (source.length > 300 && result.length < source.length * 0.18) {
+    return false;
+  }
+
+  if (/[.!؟?…»)\]]$/.test(source) && !/[.!؟?…»)\]]$/.test(result)) {
+    return false;
+  }
+
+  return true;
+}
+
+function readCachedTranslation(lang, text) {
+  const key = cacheKeyFor(lang, text);
+
+  if (CC_MEMORY_CACHE.has(key)) return CC_MEMORY_CACHE.get(key);
+
+  try {
+    const value = localStorage.getItem(key);
+
+    if (value && isValidTranslation(text, value)) {
+      CC_MEMORY_CACHE.set(key, value);
+      return value;
+    }
+
+    if (value) localStorage.removeItem(key);
+  } catch (e) {}
+
+  return null;
+}
+
+function writeCachedTranslation(lang, text, translated) {
+  if (!isValidTranslation(text, translated)) return;
+
+  const key = cacheKeyFor(lang, text);
+  CC_MEMORY_CACHE.set(key, translated);
+
+  try {
+    localStorage.setItem(key, translated);
+  } catch (e) {}
+}
+
+
+/* =========================================================
+   PROTECT QUOTED TITLES
+========================================================= */
+
+function protectQuotedTitles(text) {
+  const protectedItems = [];
+
+  const output = String(text).replace(
+    /«[^»]+»|“[^”]+”|"[^"]+"/g,
+    match => {
+      const token = `CCPROTECTEDTITLE${protectedItems.length}X`;
+      protectedItems.push({ token, value: match });
+      return token;
+    }
+  );
+
+  return { output, protectedItems };
+}
+
+function restoreQuotedTitles(text, protectedItems) {
+  let output = String(text);
+
+  protectedItems.forEach(item => {
+    output = output.split(item.token).join(item.value);
+  });
+
+  return output;
+}
+
+
+/* =========================================================
+   TRANSLATION REQUEST
+========================================================= */
+
+async function requestTranslation(text, targetLang) {
+  const clean = String(text ?? '').trim();
+
+  if (!clean || targetLang === 'ar') return clean;
+
+  if (window.CC_AI_TRANSLATE_ENDPOINT) {
+    try {
+      const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: clean,
+          sourceLang: 'ar',
+          targetLang,
+          domain: 'cinema criticism magazine',
+          instructions: [
+            'Translate the complete text without summarizing.',
+            'Preserve all paragraphs and their order.',
+            'Do not omit sentences or endings.',
+            'Do not translate personal names by meaning.',
+            'Do not invent foreign film titles.',
+            'Preserve quoted film titles exactly as written.',
+            'Return only the complete translation.'
+          ].join(' ')
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const out = String(
+          (data && (data.translatedText || data.text || data.result)) || ''
+        ).trim();
+
+        if (isValidTranslation(clean, out)) return out;
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const url =
+      'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
+      encodeURIComponent(targetLang) +
+      '&dt=t&q=' +
+      encodeURIComponent(clean);
+
+    const res = await fetch(url);
+    if (!res.ok) return '';
+
+    const data = await res.json();
+
+    const translated = Array.isArray(data) && Array.isArray(data[0])
+      ? data[0].map(part => Array.isArray(part) ? part[0] : '').join('')
+      : '';
+
+    return isValidTranslation(clean, translated) ? translated : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+
+/* =========================================================
+   TRANSLATE TEXT
+========================================================= */
+
+async function translateText(text, targetLang, el = null) {
+  const original = String(text ?? '');
+  const clean = original.trim();
+
+  if (!clean || targetLang === 'ar') return original;
+
+  if (
+    el &&
+    (el.hasAttribute('data-author-name') ||
+      el.closest('[data-author-name]'))
+  ) {
+    return original.replace(clean, transliterateArabicName(clean));
+  }
+
+  const cached = readCachedTranslation(targetLang, clean);
+  if (cached !== null) return original.replace(clean, cached);
+
+  const protectedData = protectQuotedTitles(clean);
+
+  const translated = await requestTranslation(
+    protectedData.output,
+    targetLang
+  );
+
+  if (!translated) return original;
+
+  const restored = restoreQuotedTitles(
+    translated,
+    protectedData.protectedItems
+  );
+
+  if (!isValidTranslation(clean, restored)) return original;
+
+  writeCachedTranslation(targetLang, clean, restored);
+  return original.replace(clean, restored);
+}
+
+
+/* =========================================================
+   SAFE DOM TRANSLATION
+   Uses text nodes, including text inside nested elements.
+========================================================= */
+
+function shouldSkipTranslationNode(node) {
+  if (!node || !node.parentElement) return true;
+
+  const parent = node.parentElement;
+  const text = node.textContent || '';
+
+  if (!text.trim()) return true;
+
+  if (
+    parent.closest(
+      'script,style,noscript,textarea,input,select,option,svg,code,pre'
+    )
+  ) return true;
+
+  if (
+    parent.closest(
+      '#languageSelect,.brand,footer .foot-logo,' +
+      '[data-no-translate],#ccArticleReader'
+    )
+  ) return true;
+
+  return false;
+}
+
+function collectTranslatableTextNodes() {
+  const nodes = [];
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT
+  );
+
+  let node;
+
+  while ((node = walker.nextNode())) {
+    if (!shouldSkipTranslationNode(node)) {
+      nodes.push(node);
+    }
+  }
+
+  return nodes;
+}
+
+let CC_TRANSLATION_RUN = 0;
+
+async function applyLanguageToDom(lang) {
+  const runId = ++CC_TRANSLATION_RUN;
+
+  applyHtmlDirection(lang);
+
+  const select = $('#languageSelect');
+  if (select && select.value !== lang) select.value = lang;
+
+  const nodes = collectTranslatableTextNodes();
+
+  if (lang === 'ar') {
+    nodes.forEach(node => {
+      const original = CC_ORIGINAL_TEXT_NODES.get(node);
+      if (original !== undefined) node.textContent = original;
+    });
+    return;
+  }
+
+  const batch = nodes.map(node => {
+    if (!CC_ORIGINAL_TEXT_NODES.has(node)) {
+      CC_ORIGINAL_TEXT_NODES.set(node, node.textContent);
+    }
+
+    return {
+      node,
+      source: CC_ORIGINAL_TEXT_NODES.get(node),
+      parent: node.parentElement
+    };
+  });
+
+  let index = 0;
+  const concurrency = 5;
+
+  async function worker() {
+    while (index < batch.length) {
+      if (runId !== CC_TRANSLATION_RUN) return;
+
+      const current = batch[index++];
+
+      if (!current.node.isConnected) continue;
+
+      const translated = await translateText(
+        current.source,
+        lang,
+        current.parent
+      );
+
+      if (
+        runId === CC_TRANSLATION_RUN &&
+        getCurrentLang() === lang &&
+        current.node.isConnected
+      ) {
+        current.node.textContent = translated;
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: concurrency }, worker)
+  );
+}
+
+
+/* =========================================================
+   WHOLE ARTICLE TRANSLATION
+========================================================= */
+
+function translationLooksComplete(source, translated) {
+  const original = String(source ?? '').trim();
+  const result = String(translated ?? '').trim();
+
+  if (!original || !result) return false;
+  if (!isValidTranslation(original, result)) return false;
+
+  const originalParagraphs = articleParagraphs(original);
+  const translatedParagraphs = articleParagraphs(result);
+
+  if (
+    originalParagraphs.length > 2 &&
+    translatedParagraphs.length < Math.max(
+      1,
+      Math.floor(originalParagraphs.length * 0.55)
+    )
+  ) {
+    return false;
+  }
+
+  const sourceLast = originalParagraphs[originalParagraphs.length - 1] || '';
+  const resultLast = translatedParagraphs[translatedParagraphs.length - 1] || '';
+
+  if (sourceLast.length > 35 && resultLast.length < 8) return false;
+
+  return true;
+}
+
+async function translateWholeArticle(content, lang) {
+  const original = String(content ?? '');
+
+  if (!original.trim() || lang === 'ar') return original;
+
+  const cached = readCachedTranslation(lang, original);
+
+  if (cached && translationLooksComplete(original, cached)) {
+    return cached;
+  }
+
+  const protectedData = protectQuotedTitles(original);
+
+  const translated = await requestTranslation(
+    protectedData.output,
+    lang
+  );
+
+  if (!translated) return original;
+
+  const restored = restoreQuotedTitles(
+    translated,
+    protectedData.protectedItems
+  );
+
+  if (!translationLooksComplete(original, restored)) {
+    return original;
+  }
+
+  writeCachedTranslation(lang, original, restored);
+  return restored;
+}
+
+
+/* =========================================================
+   LANGUAGE SWITCHER
+========================================================= */
+
+function initLanguageSwitcher() {
+  clearOldTranslationCache();
+
+  const select = $('#languageSelect');
+  const initialLang = getCurrentLang();
+
+  applyHtmlDirection(initialLang);
+
+  if (!select) return;
+
+  select.value = initialLang;
+
+  select.onchange = async () => {
+    const chosen = ['fr', 'en'].includes(select.value)
+      ? select.value
+      : 'ar';
+
+    try {
+      localStorage.setItem(CC_LANG_KEY, chosen);
+    } catch (e) {}
+
+    await applyLanguageToDom(chosen);
+
+    const reader = document.getElementById('ccArticleReader');
+
+    if (reader && reader.classList.contains('is-open')) {
+      const article = window.__CC_OPEN_ARTICLE__;
+
+      if (article) {
+        await openArticle(article.id, true);
+      }
+    }
+  };
+}
+
+
+/* =========================================================
    OPEN ARTICLE
 ========================================================= */
 
-function openArticle(id) {
+let CC_OPEN_ARTICLE_REQUEST = 0;
+
+async function openArticle(id, keepReaderOpen = false) {
   createArticleReader();
 
+  const requestId = ++CC_OPEN_ARTICLE_REQUEST;
   const articles = window.__CC_ARTICLES__ || [];
 
   const article = articles.find(
@@ -1249,25 +1291,70 @@ function openArticle(id) {
 
   if (!article) return;
 
-  Promise.resolve(
-    db.rpc('increment_views', { article_id: article.id })
-  )
-    .then(() => {
-      article.views = (Number(article.views) || 0) + 1;
+  window.__CC_OPEN_ARTICLE__ = article;
 
-      const badge = document.querySelector('.cc-article-date .views');
+  /* لا نزيد المشاهدات عند إعادة عرض المقال بسبب تغيير اللغة */
+  if (!keepReaderOpen) {
+    Promise.resolve(
+      db.rpc('increment_views', { article_id: article.id })
+    )
+      .then(result => {
+        if (result && result.error) {
+          console.error('View counter:', result.error);
+          return;
+        }
 
-      if (badge) {
-        badge.textContent = viewsLabel(article.views);
-      }
-    })
-    .catch(() => {});
+        article.views = (Number(article.views) || 0) + 1;
+
+        const badge = document.querySelector(
+          '.cc-article-date .views'
+        );
+
+        if (badge && window.__CC_OPEN_ARTICLE__?.id === article.id) {
+          badge.textContent = viewsLabel(article.views, getCurrentLang());
+        }
+      })
+      .catch(() => {});
+  }
 
   const target = document.getElementById('ccArticleContent');
-
   if (!target) return;
 
-  const paragraphs = articleParagraphs(article.content);
+  const lang = getCurrentLang();
+
+  target.innerHTML = `
+    <div class="cc-no-content">
+      ${
+        lang === 'ar'
+          ? 'جارٍ فتح المقال...'
+          : lang === 'fr'
+            ? 'Ouverture de l’article...'
+            : 'Loading article...'
+      }
+    </div>
+  `;
+
+  let articleContent = String(article.content || '');
+
+  if (lang !== 'ar' && articleContent.trim()) {
+    articleContent = await translateWholeArticle(articleContent, lang);
+  }
+
+  if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
+
+  const [translatedTitle, translatedCategory] = lang === 'ar'
+    ? [
+        article.title || '',
+        article.category || 'نقد سينمائي'
+      ]
+    : await Promise.all([
+        translateText(article.title || '', lang),
+        translateText(article.category || 'نقد سينمائي', lang)
+      ]);
+
+  if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
+
+  const paragraphs = articleParagraphs(articleContent);
 
   const authorImage = safeUrl(article.author_image);
   const image1 = safeUrl(article.image_1);
@@ -1275,33 +1362,28 @@ function openArticle(id) {
   const image3 = safeUrl(article.image_3);
 
   const total = paragraphs.length;
-
   let middleIndex = Math.ceil(total / 2);
 
-  if (total <= 2) {
-    middleIndex = 1;
-  }
+  if (total <= 2) middleIndex = 1;
 
   let body = '';
 
   paragraphs.forEach((paragraph, index) => {
     if (image2 && index === middleIndex) {
-      body += articleImage(image2, article.title);
+      body += articleImage(image2, translatedTitle);
     }
 
     if (image3 && index === total - 1) {
-      body += articleImage(image3, article.title);
+      body += articleImage(image3, translatedTitle);
     }
 
     body += `
-      <p
-        class="cc-p"
+      <p class="cc-p"
         ${
           article.font_family
             ? `style="font-family:'${esc(article.font_family)}','IBM Plex Sans Arabic',sans-serif"`
             : ''
-        }
-      >
+        }>
         ${formatArticleText(paragraph)}
       </p>
     `;
@@ -1310,101 +1392,92 @@ function openArticle(id) {
   if (!paragraphs.length) {
     body = `
       <div class="cc-no-content">
-        لا يوجد نص لهذا المقال بعد.
+        ${
+          lang === 'ar'
+            ? 'لا يوجد نص لهذا المقال بعد.'
+            : lang === 'fr'
+              ? 'Aucun texte disponible pour cet article.'
+              : 'No article text is available.'
+        }
       </div>
-
-      ${image2 ? articleImage(image2, article.title) : ''}
-      ${image3 ? articleImage(image3, article.title) : ''}
+      ${image2 ? articleImage(image2, translatedTitle) : ''}
+      ${image3 ? articleImage(image3, translatedTitle) : ''}
     `;
   }
 
+  const authorName = article.author
+    ? transliterateArabicName(article.author)
+    : '';
+
+  const authorPlaceholder = authorName
+    ? authorName.slice(0, 1)
+    : (lang === 'ar' ? 'ك' : 'C');
+
+  const authorLabel = lang === 'fr'
+    ? 'Comité de rédaction'
+    : lang === 'en'
+      ? 'Editorial team'
+      : 'هيئة التحرير';
+
+  const dateLabel = article.created_at
+    ? formatArticleDate(article.created_at, lang)
+    : '';
+
   target.innerHTML = `
     <div class="cc-article-category">
-      ${esc(article.category || 'نقد سينمائي')}
+      ${esc(translatedCategory)}
     </div>
 
-    <h1 class="cc-article-title">
-      ${esc(article.title)}
-    </h1>
+    <h1 class="cc-article-title">${esc(translatedTitle)}</h1>
 
     <div class="cc-article-author">
       ${
         authorImage
-          ? `
-            <img
-              class="cc-author-photo"
-              src="${esc(authorImage)}"
-              alt="${esc(article.author || 'الكاتب')}"
-            >
-          `
-          : `
-            <div class="cc-author-placeholder">
-              ${esc((article.author || 'ك').slice(0, 1))}
-            </div>
-          `
+          ? `<img class="cc-author-photo" src="${esc(authorImage)}" alt="${esc(authorName || authorLabel)}">`
+          : `<div class="cc-author-placeholder">${esc(authorPlaceholder)}</div>`
       }
 
       ${
         article.author
-          ? `
-            <a
-              class="cc-author-link"
-              href="author.html?name=${encodeURIComponent(article.author)}"
-              data-author-name="1"
-            >
-              ${esc(article.author)}
-            </a>
-          `
-          : '<span>هيئة التحرير</span>'
+          ? `<a class="cc-author-link"
+                href="author.html?name=${encodeURIComponent(article.author)}"
+                data-author-name="1">${esc(authorName)}</a>`
+          : `<span>${authorLabel}</span>`
       }
     </div>
 
-    ${image1 ? articleImage(image1, article.title) : ''}
+    ${image1 ? articleImage(image1, translatedTitle) : ''}
 
-    <div class="cc-article-body">
-      ${body}
-    </div>
+    <div class="cc-article-body">${body}</div>
 
     ${
       article.created_at
-        ? `
-          <div class="cc-article-date">
-            <span>
-              ${formatArticleDate(article.created_at)}
-            </span>
-
-            <span class="views">
-              ${viewsLabel(article.views)}
-            </span>
-          </div>
-        `
+        ? `<div class="cc-article-date">
+             <span>${esc(dateLabel)}</span>
+             <span class="views">${viewsLabel(article.views, lang)}</span>
+           </div>`
         : ''
     }
 
-    ${shareBar(article)}
+    ${shareBar(article, lang)}
   `;
 
   const reader = document.getElementById('ccArticleReader');
 
   reader.classList.add('is-open');
   document.body.classList.add('cc-reader-open');
-
   reader.scrollTop = 0;
 
-  bindShareCopy(article);
+  bindShareCopy(article, lang);
 
   const hash = '#article-' + encodeURIComponent(article.id);
 
-  if (location.hash !== hash) {
+  if (!keepReaderOpen && location.hash !== hash) {
     history.replaceState(
       null,
       '',
       location.pathname + location.search + hash
     );
-  }
-
-  if (getCurrentLang() !== 'ar') {
-    translateReaderNode(target, getCurrentLang());
   }
 }
 
@@ -1415,11 +1488,14 @@ function openArticle(id) {
 
 function closeArticle() {
   const reader = document.getElementById('ccArticleReader');
-
   if (!reader) return;
+
+  ++CC_OPEN_ARTICLE_REQUEST;
 
   reader.classList.remove('is-open');
   document.body.classList.remove('cc-reader-open');
+
+  window.__CC_OPEN_ARTICLE__ = null;
 
   if (location.hash.startsWith('#article-')) {
     history.replaceState(
@@ -1435,15 +1511,18 @@ function closeArticle() {
    DATE
 ========================================================= */
 
-function formatArticleDate(value) {
+function formatArticleDate(value, lang = getCurrentLang()) {
   try {
     const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
 
-    if (Number.isNaN(date.getTime())) {
-      return '';
-    }
+    const locale = lang === 'fr'
+      ? 'fr-FR'
+      : lang === 'en'
+        ? 'en-GB'
+        : 'ar-DZ';
 
-    return new Intl.DateTimeFormat('ar-DZ', {
+    return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -1460,7 +1539,6 @@ function formatArticleDate(value) {
 
 function openArticleFromHash() {
   const hash = location.hash || '';
-
   if (!hash.startsWith('#article-')) return;
 
   let id = hash.slice(9);
@@ -1469,14 +1547,12 @@ function openArticleFromHash() {
     id = decodeURIComponent(id);
   } catch (e) {}
 
-  if (id) {
-    openArticle(id);
-  }
+  if (id) openArticle(id);
 }
 
 
 /* =========================================================
-   ARCHIVE PAGES (SECTION / AUTHOR)
+   ARCHIVE PAGES
 ========================================================= */
 
 async function renderArchivePage(mode) {
@@ -1488,17 +1564,11 @@ async function renderArchivePage(mode) {
       : params.get('name')
   ) || '';
 
-  const [
-    sections,
-    articles,
-    settings
-  ] = await Promise.all([
+  const [sections, articles, settings] = await Promise.all([
     get('sections', 'sort_order', true),
-
     get('articles', 'sort_order', true),
 
-    db
-      .from('settings')
+    db.from('settings')
       .select('*')
       .eq('id', true)
       .maybeSingle()
@@ -1513,52 +1583,37 @@ async function renderArchivePage(mode) {
   if (!titleTarget || !target) return;
 
   const wanted = normalizeName(key);
-
-  let list = articles.filter(
-    x => x.visible !== false
-  );
+  let list = articles.filter(x => x.visible !== false);
 
   if (mode === 'section') {
     const match = sections.find(
       s => normalizeName(s.name) === wanted
     );
 
-    list = list.filter(x =>
-      normalizeName(x.category) === wanted
+    list = list.filter(
+      x => normalizeName(x.category) === wanted
     );
 
-    titleTarget.textContent = match
-      ? match.name
-      : key;
+    titleTarget.textContent = match ? match.name : key;
 
     if (descTarget) {
-      descTarget.textContent = match
-        ? (match.description || '')
-        : '';
+      descTarget.textContent = match ? (match.description || '') : '';
     }
 
     const eyebrow = $('#pageEyebrow');
-
-    if (eyebrow) {
-      eyebrow.textContent = 'قسم';
-    }
+    if (eyebrow) eyebrow.textContent = 'قسم';
   } else {
-    list = list.filter(x =>
-      normalizeName(x.author) === wanted
+    list = list.filter(
+      x => normalizeName(x.author) === wanted
     );
 
     titleTarget.textContent = key || 'كاتب';
     titleTarget.setAttribute('data-author-name', '1');
 
-    if (descTarget) {
-      descTarget.textContent = '';
-    }
+    if (descTarget) descTarget.textContent = '';
 
     const eyebrow = $('#pageEyebrow');
-
-    if (eyebrow) {
-      eyebrow.textContent = 'كاتب';
-    }
+    if (eyebrow) eyebrow.textContent = 'كاتب';
   }
 
   document.title = titleTarget.textContent + ' | ضد السينما';
@@ -1568,28 +1623,20 @@ async function renderArchivePage(mode) {
 
   if (!list.length) {
     window.__CC_ARTICLES__ = [];
-
-    target.innerHTML = `
-      <div class="empty">
-        لا توجد مقالات منشورة هنا بعد.
-      </div>
-    `;
-
+    target.innerHTML = `<div class="empty">لا توجد مقالات منشورة هنا بعد.</div>`;
     return;
   }
 
   window.__CC_ARTICLES__ = list;
-
   target.innerHTML = list.map(articleCard).join('');
 
   bindArticleClicks(target);
-
   openArticleFromHash();
 }
 
 
 /* =========================================================
-   SITE SETTINGS (ACCENT + FOOTER)
+   SITE SETTINGS
 ========================================================= */
 
 function applySiteSettings(settings) {
@@ -1611,378 +1658,6 @@ function applySiteSettings(settings) {
 
 
 /* =========================================================
-   MULTILINGUAL SYSTEM (AR / FR / EN)
-   - أسماء الكتّاب والمحرّرين بالحرف اللاتيني دون ترجمة لمعناها
-   - مطابقة عناوين الأفلام مع اسمها الرسمي في اللغة المطلوبة
-========================================================= */
-
-const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v4_';
-const CC_MEMORY_CACHE = new Map();
-
-// أسماء كتّاب ومحرّرين معتمدة صراحةً بالحرف اللاتيني
-const AUTHORS_LATIN_MAP = {
-  [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
-  [normalizeName('محمدي حكيم')]: 'Mohammedi Hakim',
-  [normalizeName('عبد الرؤوف بن أحمد')]: 'Abdel Raouf Ben Ahmed',
-  [normalizeName('بن أحمد عبد الرؤوف')]: 'Abdel Raouf Ben Ahmed',
-  [normalizeName('عامر طارق')]: 'Amer Tariq',
-  [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
-};
-
-// عناوين الأفلام الرسمية حسب اللغة (fr / en) بدلاً من الترجمة الحرفية
-const FILM_OFFICIAL_TITLES = {
-  [normalizeName('غرق')]: {
-    fr: 'Sink',
-    en: 'Sink'
-  },
-  [normalizeName('الحريف')]: {
-    fr: 'Le Joueur de rue',
-    en: 'The Street Player'
-  },
-  [normalizeName('رقية')]: {
-    fr: 'Ruqaya',
-    en: 'Ruqaya'
-  }
-};
-
-// نقل صوتي للحروف العربية إلى لاتينية إذا لم يكن الاسم موجوداً في القاموس
-function transliterateArabicName(name) {
-  const raw = String(name ?? '').trim();
-  if (!raw) return raw;
-
-  const norm = normalizeName(raw);
-  if (AUTHORS_LATIN_MAP[norm]) {
-    return AUTHORS_LATIN_MAP[norm];
-  }
-
-  // إذا كان الاسم مكتوباً أصلاً بالحروف اللاتينية نعيده كما هو
-  if (!/[\u0600-\u06FF]/.test(raw)) {
-    return raw;
-  }
-
-  const digraphs = [
-    ['ال', 'El '],
-    ['تش', 'Ch'],
-    ['ث', 'Th'],
-    ['خ', 'Kh'],
-    ['ذ', 'Dh'],
-    ['ش', 'Ch'],
-    ['غ', 'Gh']
-  ];
-
-  const singleMap = {
-    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ء': '',
-    'ب': 'b', 'ت': 't', 'ج': 'j', 'ح': 'h', 'د': 'd',
-    'ر': 'r', 'ز': 'z', 'س': 's', 'ص': 's', 'ض': 'd',
-    'ط': 't', 'ظ': 'z', 'ع': '', 'ف': 'f', 'ق': 'q',
-    'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h',
-    'و': 'w', 'ي': 'y', 'ى': 'a', 'ة': 'a'
-  };
-
-  return raw.split(/\s+/).filter(Boolean).map(word => {
-    let i = 0;
-    let out = '';
-    while (i < word.length) {
-      let matched = false;
-      for (const [arSeq, latSeq] of digraphs) {
-        if (word.startsWith(arSeq, i)) {
-          out += latSeq;
-          i += arSeq.length;
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        const ch = word[i];
-        out += singleMap[ch] !== undefined ? singleMap[ch] : ch;
-        i += 1;
-      }
-    }
-    out = out.trim();
-    return out ? out.charAt(0).toUpperCase() + out.slice(1) : word;
-  }).join(' ');
-}
-
-function clearOldTranslationCache() {
-  try {
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (
-        k &&
-        (k.startsWith('cc_tr_v1_') ||
-          k.startsWith('cc_tr_v2_') ||
-          k.startsWith('cc_tr_v3_'))
-      ) {
-        keysToRemove.push(k);
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-  } catch (e) {}
-}
-
-function getCurrentLang() {
-  try {
-    const saved = localStorage.getItem(CC_LANG_KEY);
-    if (saved === 'fr' || saved === 'en' || saved === 'ar') {
-      return saved;
-    }
-  } catch (e) {}
-  return 'ar';
-}
-
-function applyHtmlDirection(lang) {
-  const isAr = lang === 'ar';
-  document.documentElement.lang = lang;
-  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-  document.body.dir = isAr ? 'rtl' : 'ltr';
-}
-
-function cacheKeyFor(lang, text) {
-  let hash = 2166136261;
-  const str = lang + '::' + text;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return CC_CACHE_PREFIX + lang + '_' + (hash >>> 0).toString(16);
-}
-
-function readCachedTranslation(lang, text) {
-  const key = cacheKeyFor(lang, text);
-  if (CC_MEMORY_CACHE.has(key)) {
-    return CC_MEMORY_CACHE.get(key);
-  }
-  try {
-    const val = localStorage.getItem(key);
-    if (val !== null) {
-      CC_MEMORY_CACHE.set(key, val);
-      return val;
-    }
-  } catch (e) {}
-  return null;
-}
-
-function writeCachedTranslation(lang, text, translated) {
-  const key = cacheKeyFor(lang, text);
-  CC_MEMORY_CACHE.set(key, translated);
-  try {
-    localStorage.setItem(key, translated);
-  } catch (e) {}
-}
-
-function matchOfficialFilmTitle(cleanText, targetLang) {
-  const norm = normalizeName(cleanText);
-  if (FILM_OFFICIAL_TITLES[norm] && FILM_OFFICIAL_TITLES[norm][targetLang]) {
-    return FILM_OFFICIAL_TITLES[norm][targetLang];
-  }
-
-  const out = cleanText.replace(/«([^»]+)»|"([^"]+)"/g, (full, arQuote, enQuote) => {
-    const inner = (arQuote || enQuote || '').trim();
-    const mapped = FILM_OFFICIAL_TITLES[normalizeName(inner)];
-    if (mapped && mapped[targetLang]) {
-      return arQuote ? `«${mapped[targetLang]}»` : `"${mapped[targetLang]}"`;
-    }
-    return full;
-  });
-
-  return out !== cleanText ? out : null;
-}
-
-function getDirectText(el) {
-  let out = '';
-  el.childNodes.forEach(node => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      out += node.textContent;
-    }
-  });
-  return out;
-}
-
-function setDirectText(el, newText) {
-  const textNodes = Array.from(el.childNodes).filter(
-    node => node.nodeType === Node.TEXT_NODE
-  );
-
-  if (textNodes.length === 1) {
-    textNodes[0].textContent = newText;
-    return;
-  }
-
-  const firstNonEmpty = textNodes.find(n => n.textContent.trim()) || textNodes[0];
-  if (firstNonEmpty) {
-    firstNonEmpty.textContent = newText;
-    textNodes.forEach(n => {
-      if (n !== firstNonEmpty && n.textContent.trim()) {
-        n.textContent = '';
-      }
-    });
-  }
-}
-
-function hasDirectTranslatableText(el) {
-  if (!el || !el.textContent || !el.textContent.trim()) return false;
-  if (
-    el.closest('#languageSelect') ||
-    el.closest('.brand') ||
-    el.closest('footer .foot-logo') ||
-    el.hasAttribute('data-no-translate') ||
-    el.closest('[data-no-translate]')
-  ) {
-    return false;
-  }
-  return getDirectText(el).trim().length > 0;
-}
-
-async function translateText(text, targetLang, el = null) {
-  const clean = String(text ?? '').trim();
-  if (!clean || targetLang === 'ar') return text;
-
-  // 1. أسماء الكتّاب والمحرّرين تُكتب بالحرف اللاتيني دون ترجمة لمعناها
-  if (el && (el.hasAttribute('data-author-name') || el.closest('[data-author-name]'))) {
-    const latinName = transliterateArabicName(clean);
-    return text.replace(clean, latinName);
-  }
-
-  // 2. مطابقة عناوين الأفلام مع اسمها الرسمي في اللغة المطلوبة
-  const officialFilm = matchOfficialFilmTitle(clean, targetLang);
-  if (officialFilm !== null) {
-    writeCachedTranslation(targetLang, clean, officialFilm);
-    return text.replace(clean, officialFilm);
-  }
-
-  // 3. قراءة الكاش
-  const cached = readCachedTranslation(targetLang, clean);
-  if (cached !== null) {
-    return text.replace(clean, cached);
-  }
-
-  // 4. نقطة نهاية ذكاء اصطناعي خارجية إن وُجدت
-  if (window.CC_AI_TRANSLATE_ENDPOINT) {
-    try {
-      const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: clean,
-          sourceLang: 'ar',
-          targetLang,
-          domain: 'cinema criticism magazine'
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const out = (data && (data.translatedText || data.text || data.result)) || '';
-        if (out) {
-          writeCachedTranslation(targetLang, clean, out);
-          return text.replace(clean, out);
-        }
-      }
-    } catch (e) {}
-  }
-
-  // 5. الترجمة الآلية
-  try {
-    const url =
-      'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
-      encodeURIComponent(targetLang) +
-      '&dt=t&q=' +
-      encodeURIComponent(clean);
-
-    const res = await fetch(url);
-    if (!res.ok) return text;
-    const data = await res.json();
-    const translated = Array.isArray(data) && Array.isArray(data[0])
-      ? data[0].map(part => (Array.isArray(part) ? part[0] : '')).join('')
-      : '';
-
-    if (translated) {
-      writeCachedTranslation(targetLang, clean, translated);
-      return text.replace(clean, translated);
-    }
-  } catch (e) {}
-
-  return text;
-}
-
-async function applyLanguageToDom(lang) {
-  applyHtmlDirection(lang);
-
-  const select = $('#languageSelect');
-  if (select && select.value !== lang) {
-    select.value = lang;
-  }
-
-  const candidates = Array.from(document.querySelectorAll('body *')).filter(hasDirectTranslatableText);
-
-  if (lang === 'ar') {
-    candidates.forEach(el => {
-      if (el.dataset.origDirectText !== undefined) {
-        setDirectText(el, el.dataset.origDirectText);
-      }
-    });
-    return;
-  }
-
-  const batch = candidates.map(el => {
-    if (el.dataset.origDirectText === undefined) {
-      el.dataset.origDirectText = getDirectText(el);
-    }
-    return { el, source: el.dataset.origDirectText };
-  });
-
-  const concurrency = 6;
-  let index = 0;
-
-  async function worker() {
-    while (index < batch.length) {
-      const current = batch[index++];
-      const translated = await translateText(current.source, lang, current.el);
-      if (getCurrentLang() === lang && current.el.isConnected) {
-        setDirectText(current.el, translated);
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: concurrency }, worker));
-}
-
-async function translateReaderNode(container, lang) {
-  if (!container || lang === 'ar') return;
-  const targets = Array.from(container.querySelectorAll('*')).filter(hasDirectTranslatableText);
-  for (const el of targets) {
-    if (el.dataset.origDirectText === undefined) {
-      el.dataset.origDirectText = getDirectText(el);
-    }
-    const translated = await translateText(el.dataset.origDirectText, lang, el);
-    if (getCurrentLang() === lang && el.isConnected) {
-      setDirectText(el, translated);
-    }
-  }
-}
-
-function initLanguageSwitcher() {
-  clearOldTranslationCache();
-
-  const select = $('#languageSelect');
-  const initialLang = getCurrentLang();
-  applyHtmlDirection(initialLang);
-
-  if (select) {
-    select.value = initialLang;
-    select.onchange = async () => {
-      const chosen = select.value === 'fr' || select.value === 'en' ? select.value : 'ar';
-      try {
-        localStorage.setItem(CC_LANG_KEY, chosen);
-      } catch (e) {}
-      await applyLanguageToDom(chosen);
-    };
-  }
-}
-
-
-/* =========================================================
    MAIN
 ========================================================= */
 
@@ -1996,12 +1671,16 @@ async function main() {
     path.endsWith('author.html')
   ) {
     await renderArchivePage(
-      path.endsWith('section.html')
-        ? 'section'
-        : 'author'
+      path.endsWith('section.html') ? 'section' : 'author'
     );
 
     await applyLanguageToDom(getCurrentLang());
+
+    if (!window.__CC_HASH_LISTENER__) {
+      window.__CC_HASH_LISTENER__ = true;
+      window.addEventListener('hashchange', openArticleFromHash);
+    }
+
     return;
   }
 
@@ -2014,17 +1693,12 @@ async function main() {
     settings
   ] = await Promise.all([
     get('issues', 'issue_number', false),
-
     get('sections', 'sort_order', true),
-
     get('articles', 'sort_order', true),
-
     get('team', 'sort_order', true),
-
     get('editors', 'sort_order', true),
 
-    db
-      .from('settings')
+    db.from('settings')
       .select('*')
       .eq('id', true)
       .maybeSingle()
@@ -2032,12 +1706,9 @@ async function main() {
       .catch(() => null)
   ]);
 
-  const all = issues.length
-    ? issues
-    : fallbackIssues;
+  const all = issues.length ? issues : fallbackIssues;
 
   renderIssues(all);
-
   renderSections(sections);
 
   renderArticles(
@@ -2045,23 +1716,18 @@ async function main() {
   );
 
   renderTeam(team);
-
   renderEditors(editors);
 
   let current = settings?.current_issue_id
     ? issues.find(x => x.id === settings.current_issue_id)
     : null;
 
-  if (!current) {
-    current = issues[0] || null;
-  }
+  if (!current) current = issues[0] || null;
 
   renderCurrent(current);
 
   if (settings) {
-    if (settings.site_name) {
-      document.title = settings.site_name;
-    }
+    if (settings.site_name) document.title = settings.site_name;
 
     if (settings.hero_title && $('#heroTitle')) {
       $('#heroTitle').textContent = settings.hero_title;
@@ -2090,7 +1756,6 @@ async function main() {
   }
 
   applySiteSettings(settings);
-
   createArticleReader();
 
   openArticleFromHash();
@@ -2099,7 +1764,6 @@ async function main() {
 
   if (!window.__CC_HASH_LISTENER__) {
     window.__CC_HASH_LISTENER__ = true;
-
     window.addEventListener('hashchange', openArticleFromHash);
   }
 }
