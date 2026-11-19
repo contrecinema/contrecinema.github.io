@@ -1,4 +1,3 @@
-
 const SUPABASE_URL = 'https://icbfpfrzvdfmgunzlduu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 
@@ -1398,6 +1397,10 @@ function openArticle(id) {
       location.pathname + location.search + hash
     );
   }
+
+  if (getCurrentLang() !== 'ar') {
+    translateReaderNode(target, getCurrentLang());
+  }
 }
 
 
@@ -1603,10 +1606,209 @@ function applySiteSettings(settings) {
 
 
 /* =========================================================
+   MULTILINGUAL SYSTEM (AR / FR / EN) WITH CACHE
+========================================================= */
+
+const CC_LANG_KEY = 'cc-lang';
+const CC_CACHE_PREFIX = 'cc_tr_v1_';
+const CC_MEMORY_CACHE = new Map();
+
+function getCurrentLang() {
+  try {
+    const saved = localStorage.getItem(CC_LANG_KEY);
+    if (saved === 'fr' || saved === 'en' || saved === 'ar') {
+      return saved;
+    }
+  } catch (e) {}
+  return 'ar';
+}
+
+function applyHtmlDirection(lang) {
+  const isAr = lang === 'ar';
+  document.documentElement.lang = lang;
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  document.body.dir = isAr ? 'rtl' : 'ltr';
+}
+
+function cacheKeyFor(lang, text) {
+  let hash = 2166136261;
+  const str = lang + '::' + text;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return CC_CACHE_PREFIX + lang + '_' + (hash >>> 0).toString(16);
+}
+
+function readCachedTranslation(lang, text) {
+  const key = cacheKeyFor(lang, text);
+  if (CC_MEMORY_CACHE.has(key)) {
+    return CC_MEMORY_CACHE.get(key);
+  }
+  try {
+    const val = localStorage.getItem(key);
+    if (val !== null) {
+      CC_MEMORY_CACHE.set(key, val);
+      return val;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function writeCachedTranslation(lang, text, translated) {
+  const key = cacheKeyFor(lang, text);
+  CC_MEMORY_CACHE.set(key, translated);
+  try {
+    localStorage.setItem(key, translated);
+  } catch (e) {}
+}
+
+async function translateText(text, targetLang) {
+  const clean = String(text ?? '').trim();
+  if (!clean || targetLang === 'ar') return text;
+
+  const cached = readCachedTranslation(targetLang, clean);
+  if (cached !== null) {
+    return text.replace(clean, cached);
+  }
+
+  // إذا تم تعريف نقطة نهاية ذكاء اصطناعي خارجية (مثل Cloudflare Worker) نستخدمها تلقائياً
+  if (window.CC_AI_TRANSLATE_ENDPOINT) {
+    try {
+      const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: clean,
+          sourceLang: 'ar',
+          targetLang,
+          domain: 'cinema criticism magazine'
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const out = (data && (data.translatedText || data.text || data.result)) || '';
+        if (out) {
+          writeCachedTranslation(targetLang, clean, out);
+          return text.replace(clean, out);
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const url =
+      'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
+      encodeURIComponent(targetLang) +
+      '&dt=t&q=' +
+      encodeURIComponent(clean);
+
+    const res = await fetch(url);
+    if (!res.ok) return text;
+    const data = await res.json();
+    const translated = Array.isArray(data) && Array.isArray(data[0])
+      ? data[0].map(part => (Array.isArray(part) ? part[0] : '')).join('')
+      : '';
+
+    if (translated) {
+      writeCachedTranslation(targetLang, clean, translated);
+      return text.replace(clean, translated);
+    }
+  } catch (e) {}
+
+  return text;
+}
+
+function isTranslatableElement(el) {
+  if (!el || !el.textContent || !el.textContent.trim()) return false;
+  if (el.closest('#languageSelect') || el.closest('.brand') || el.closest('footer .foot-logo')) {
+    return false;
+  }
+  if (el.children.length > 0) return false;
+  return true;
+}
+
+async function applyLanguageToDom(lang) {
+  applyHtmlDirection(lang);
+
+  const select = $('#languageSelect');
+  if (select && select.value !== lang) {
+    select.value = lang;
+  }
+
+  const candidates = Array.from(document.querySelectorAll('body *')).filter(isTranslatableElement);
+
+  if (lang === 'ar') {
+    candidates.forEach(el => {
+      if (el.dataset.origText !== undefined) {
+        el.textContent = el.dataset.origText;
+      }
+    });
+    return;
+  }
+
+  const batch = candidates.map(el => {
+    if (el.dataset.origText === undefined) {
+      el.dataset.origText = el.textContent;
+    }
+    return { el, source: el.dataset.origText };
+  });
+
+  const concurrency = 6;
+  let index = 0;
+
+  async function worker() {
+    while (index < batch.length) {
+      const current = batch[index++];
+      const translated = await translateText(current.source, lang);
+      if (getCurrentLang() === lang && current.el.isConnected) {
+        current.el.textContent = translated;
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, worker));
+}
+
+async function translateReaderNode(container, lang) {
+  if (!container || lang === 'ar') return;
+  const targets = Array.from(container.querySelectorAll('*')).filter(isTranslatableElement);
+  for (const el of targets) {
+    if (el.dataset.origText === undefined) {
+      el.dataset.origText = el.textContent;
+    }
+    const translated = await translateText(el.dataset.origText, lang);
+    if (getCurrentLang() === lang && el.isConnected) {
+      el.textContent = translated;
+    }
+  }
+}
+
+function initLanguageSwitcher() {
+  const select = $('#languageSelect');
+  const initialLang = getCurrentLang();
+  applyHtmlDirection(initialLang);
+
+  if (select) {
+    select.value = initialLang;
+    select.onchange = async () => {
+      const chosen = select.value === 'fr' || select.value === 'en' ? select.value : 'ar';
+      try {
+        localStorage.setItem(CC_LANG_KEY, chosen);
+      } catch (e) {}
+      await applyLanguageToDom(chosen);
+    };
+  }
+}
+
+
+/* =========================================================
    MAIN
 ========================================================= */
 
 async function main() {
+  initLanguageSwitcher();
+
   const path = location.pathname;
 
   if (
@@ -1619,6 +1821,7 @@ async function main() {
         : 'author'
     );
 
+    await applyLanguageToDom(getCurrentLang());
     return;
   }
 
@@ -1711,6 +1914,8 @@ async function main() {
   createArticleReader();
 
   openArticleFromHash();
+
+  await applyLanguageToDom(getCurrentLang());
 
   // مستمع واحد فقط، دون تكراره عند استدعاء main.
   if (!window.__CC_HASH_LISTENER__) {
