@@ -239,11 +239,37 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
     padding: 15px 0 22px;
   }
 }
-
 /* ============ مبدّل اللغة واتجاه التصميم ============ */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+
+main,
+section,
+header,
+footer,
+.wrap,
+.topin,
+.section-head,
+.current-grid,
+.issues-grid,
+.sections-grid,
+.articles-grid,
+.team-grid,
+.about-inner,
+.contact,
+.foot {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .language-switcher {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .language-switcher select {
@@ -263,6 +289,24 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 .language-switcher select:hover,
 .language-switcher select:focus {
   border-color: var(--red);
+}
+
+/* ضبط الهوامش التلقائية لتعمل بسلاسة في RTL و LTR */
+nav {
+  margin-inline-start: auto;
+  margin-right: 0;
+}
+
+.theme-toggle {
+  margin-inline-start: auto;
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .theme-toggle {
+    margin-inline-start: 0;
+  }
 }
 
 html[dir="ltr"] body {
