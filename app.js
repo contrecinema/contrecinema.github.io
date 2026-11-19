@@ -1,4 +1,3 @@
-
 const SUPABASE_URL = 'https://icbfpfrzvdfmgunzlduu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_cWXOUqhfXPT_UT666tbHCA_IrYiBMux';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -30,10 +29,15 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
 
 function safeUrl(url) {
   if (!url) return '';
+
   try {
     const u = new URL(url);
-    if (u.protocol === 'https:' || u.protocol === 'http:') return u.href;
+
+    if (u.protocol === 'https:' || u.protocol === 'http:') {
+      return u.href;
+    }
   } catch (e) {}
+
   return '';
 }
 
@@ -144,7 +148,10 @@ const fallbackSections = [
 
 async function get(table, order = 'created_at', ascending = false) {
   try {
-    const r = await db.from(table).select('*').order(order, { ascending });
+    const r = await db
+      .from(table)
+      .select('*')
+      .order(order, { ascending });
 
     if (r.error) {
       console.error(`Supabase ${table}:`, r.error);
@@ -197,26 +204,32 @@ function renderIssues(items) {
   }
 
   target.innerHTML = items.map(x => {
-    const year = (String(x.publication_date || '').match(/(?:19|20)\d{2}/) || [])[0];
+    const year = (
+      String(x.publication_date || '').match(/(?:19|20)\d{2}/) || []
+    )[0];
 
     return `
       <article class="issue-card">
         <div class="issue-cover">${cover(x)}</div>
+
         <div class="issue-body">
           <strong>
             العدد ${esc(x.issue_number)}
             ${year ? `<span class="issue-year">(${esc(year)})</span>` : ''}
           </strong>
+
           <p>
             ${esc(x.title || 'ضد السينما !؟')}
             ${x.publication_date ? ' — ' + esc(x.publication_date) : ''}
           </p>
+
           <div class="issue-links">
             ${
               x.pdf_url
                 ? `<a class="mini red" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح PDF</a>`
                 : `<span class="mini">PDF قريباً</span>`
             }
+
             <a class="mini" href="#articles">المقالات</a>
           </div>
         </div>
@@ -254,15 +267,20 @@ function renderCurrent(x) {
           : `<div class="placeholder-cover">العدد ${esc(x.issue_number)}</div>`
       }
     </div>
+
     <div class="current-info">
       <div class="num">العدد ${esc(x.issue_number)}</div>
+
       <h3>${esc(x.title || 'ضد السينما !؟')}</h3>
+
       <p>
         ${x.publication_date
           ? esc(x.publication_date)
           : 'عدد جديد من المجلة المستقلة للنقد السينمائي.'}
       </p>
+
       <p>تصفح العدد، واقرأ ملفاتنا ومراجعاتنا وحواراتنا السينمائية.</p>
+
       ${
         x.pdf_url
           ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح وتحميل العدد PDF</a>`
@@ -336,9 +354,12 @@ function articleCard(x) {
           ? `<div class="article-card-image"><img src="${esc(image)}" alt="${esc(x.title)}" loading="lazy"></div>`
           : ''
       }
+
       <div class="article-card-content">
         <div class="cat">${esc(x.category || 'نقد سينمائي')}</div>
+
         <h3>${esc(x.title)}</h3>
+
         ${
           x.author
             ? `<small>
@@ -349,6 +370,7 @@ function articleCard(x) {
                </small>`
             : ''
         }
+
         <small class="views">${viewsLabel(x.views)}</small>
       </div>
     </article>
@@ -365,12 +387,17 @@ function renderArticles(items) {
   if (!target) return;
 
   if (!items.length) {
-    target.innerHTML = `<div class="empty">ستظهر المقالات هنا فور إضافتها من لوحة التحكم.</div>`;
+    target.innerHTML = `
+      <div class="empty">
+        ستظهر المقالات هنا فور إضافتها من لوحة التحكم.
+      </div>
+    `;
     return;
   }
 
   window.__CC_ARTICLES__ = items;
   target.innerHTML = items.map(articleCard).join('');
+
   bindArticleClicks(target);
 }
 
@@ -384,6 +411,7 @@ function bindArticleClicks(target) {
     card.onkeydown = e => {
       if (e.key === 'Enter' || e.key === ' ') {
         if (e.target.closest('a')) return;
+
         e.preventDefault();
         openArticle(card.dataset.articleId);
       }
@@ -410,6 +438,7 @@ function renderTeam(items) {
                 : esc((x.name || '?').slice(0, 1))
             }
           </div>
+
           <h3 data-author-name="1">${esc(x.name)}</h3>
           <div class="role">${esc(x.role || '')}</div>
           <p>${esc(x.bio || '')}</p>
@@ -440,7 +469,9 @@ function renderEditors(items) {
                   : esc((x.name || '?').slice(0, 1))
               }
             </div>
+
             <h3 data-author-name="1">${esc(fullName)}</h3>
+
             ${x.bio ? `<p class="editor-bio">${esc(x.bio)}</p>` : ''}
           </article>
         `;
@@ -461,6 +492,7 @@ function createArticleReader() {
 
   reader.innerHTML = `
     <div class="cc-reader-backdrop" data-close-reader></div>
+
     <article class="cc-reader" role="dialog" aria-modal="true" aria-label="قراءة المقال">
       <button class="cc-reader-close" type="button" aria-label="إغلاق المقال" data-close-reader>×</button>
       <div class="cc-reader-inner" id="ccArticleContent"></div>
@@ -564,11 +596,17 @@ function formatArticleText(text) {
       let safe = esc(line);
 
       if (/^##[ \t]+/.test(line)) {
-        safe = safe.replace(/^##[ \t]+(.*)$/, '<span class="cc-h">$1</span>');
+        safe = safe.replace(
+          /^##[ \t]+(.*)$/,
+          '<span class="cc-h">$1</span>'
+        );
       }
 
       if (/^>[ \t]?/.test(line) && line.trim()) {
-        safe = safe.replace(/^&gt;[ \t]?(.*)$/, '<span class="cc-quote">$1</span>');
+        safe = safe.replace(
+          /^&gt;[ \t]?(.*)$/,
+          '<span class="cc-quote">$1</span>'
+        );
       }
 
       return safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -670,6 +708,7 @@ function shareBar(article, lang = 'ar') {
   return `
     <div class="cc-share">
       <span class="cc-share-label">${labels.share}</span>
+
       <div class="cc-share-btns">
         ${targets.map(t => `
           <a class="cc-share-btn" href="${esc(t.href)}"
@@ -679,6 +718,7 @@ function shareBar(article, lang = 'ar') {
             <span>${esc(t.label)}</span>
           </a>
         `).join('')}
+
         <button class="cc-share-btn" id="ccShareCopy" type="button">
           ${shareIcon('M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7')}
           <span>${labels.copy}</span>
@@ -700,6 +740,7 @@ function legacyCopy(text, onDone) {
     field.select();
     document.execCommand('copy');
     document.body.removeChild(field);
+
     onDone();
   } catch (e) {}
 }
@@ -718,6 +759,7 @@ function bindShareCopy(article, lang = 'ar') {
           ? 'Link copied'
           : 'تم نسخ الرابط';
     }
+
     button.classList.add('is-done');
   };
 
@@ -735,6 +777,7 @@ function bindShareCopy(article, lang = 'ar') {
       navigator.clipboard.writeText(url)
         .then(finish)
         .catch(() => legacyCopy(url, finish));
+
       return;
     }
 
@@ -748,7 +791,10 @@ function bindShareCopy(article, lang = 'ar') {
 ========================================================= */
 
 const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v7_';
+
+/* إصدار جديد لتجنب استعمال الترجمات القديمة الناقصة */
+const CC_CACHE_PREFIX = 'cc_tr_v8_';
+
 const CC_MEMORY_CACHE = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
 
@@ -811,7 +857,10 @@ function transliterateArabicName(name) {
     }
 
     out = out.trim();
-    return out ? out.charAt(0).toUpperCase() + out.slice(1) : word;
+
+    return out
+      ? out.charAt(0).toUpperCase() + out.slice(1)
+      : word;
   }).join(' ');
 }
 
@@ -829,14 +878,16 @@ function clearOldTranslationCache() {
 
       if (
         key &&
-        /^cc_tr_v[1-6]_/.test(key) &&
+        /^cc_tr_v[1-7]_/.test(key) &&
         !key.startsWith(CC_CACHE_PREFIX)
       ) {
         keysToRemove.push(key);
       }
     }
 
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
   } catch (e) {}
 
   CC_MEMORY_CACHE.clear();
@@ -845,7 +896,10 @@ function clearOldTranslationCache() {
 function getCurrentLang() {
   try {
     const saved = localStorage.getItem(CC_LANG_KEY);
-    if (saved === 'fr' || saved === 'en' || saved === 'ar') return saved;
+
+    if (saved === 'fr' || saved === 'en' || saved === 'ar') {
+      return saved;
+    }
   } catch (e) {}
 
   return 'ar';
@@ -853,6 +907,7 @@ function getCurrentLang() {
 
 function applyHtmlDirection(lang) {
   const isAr = lang === 'ar';
+
   document.documentElement.lang = lang;
   document.documentElement.dir = isAr ? 'rtl' : 'ltr';
   document.body.dir = isAr ? 'rtl' : 'ltr';
@@ -880,17 +935,15 @@ function isValidTranslation(original, translated) {
     return false;
   }
 
-  if (/[.!؟?…»)\]]$/.test(source) && !/[.!؟?…»)\]]$/.test(result)) {
-    return false;
-  }
-
   return true;
 }
 
 function readCachedTranslation(lang, text) {
   const key = cacheKeyFor(lang, text);
 
-  if (CC_MEMORY_CACHE.has(key)) return CC_MEMORY_CACHE.get(key);
+  if (CC_MEMORY_CACHE.has(key)) {
+    return CC_MEMORY_CACHE.get(key);
+  }
 
   try {
     const value = localStorage.getItem(key);
@@ -910,41 +963,12 @@ function writeCachedTranslation(lang, text, translated) {
   if (!isValidTranslation(text, translated)) return;
 
   const key = cacheKeyFor(lang, text);
+
   CC_MEMORY_CACHE.set(key, translated);
 
   try {
     localStorage.setItem(key, translated);
   } catch (e) {}
-}
-
-
-/* =========================================================
-   PROTECT QUOTED TITLES
-========================================================= */
-
-function protectQuotedTitles(text) {
-  const protectedItems = [];
-
-  const output = String(text).replace(
-    /«[^»]+»|“[^”]+”|"[^"]+"/g,
-    match => {
-      const token = `CCPROTECTEDTITLE${protectedItems.length}X`;
-      protectedItems.push({ token, value: match });
-      return token;
-    }
-  );
-
-  return { output, protectedItems };
-}
-
-function restoreQuotedTitles(text, protectedItems) {
-  let output = String(text);
-
-  protectedItems.forEach(item => {
-    output = output.split(item.token).join(item.value);
-  });
-
-  return output;
 }
 
 
@@ -957,11 +981,16 @@ async function requestTranslation(text, targetLang) {
 
   if (!clean || targetLang === 'ar') return clean;
 
+  /*
+   * إذا كان لديك خادم ترجمة خاص، تتم تجربته أولاً.
+   */
   if (window.CC_AI_TRANSLATE_ENDPOINT) {
     try {
       const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           text: clean,
           sourceLang: 'ar',
@@ -969,11 +998,11 @@ async function requestTranslation(text, targetLang) {
           domain: 'cinema criticism magazine',
           instructions: [
             'Translate the complete text without summarizing.',
-            'Preserve all paragraphs and their order.',
-            'Do not omit sentences or endings.',
+            'Do not omit any sentence, paragraph, or ending.',
+            'Preserve the original paragraph order.',
+            'Translate all ordinary quoted text.',
             'Do not translate personal names by meaning.',
-            'Do not invent foreign film titles.',
-            'Preserve quoted film titles exactly as written.',
+            'Do not invent official foreign film titles.',
             'Return only the complete translation.'
           ].join(' ')
         })
@@ -981,15 +1010,27 @@ async function requestTranslation(text, targetLang) {
 
       if (res.ok) {
         const data = await res.json();
+
         const out = String(
-          (data && (data.translatedText || data.text || data.result)) || ''
+          (data && (
+            data.translatedText ||
+            data.text ||
+            data.result
+          )) || ''
         ).trim();
 
-        if (isValidTranslation(clean, out)) return out;
+        if (isValidTranslation(clean, out)) {
+          return out;
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Custom translation endpoint failed:', e);
+    }
   }
 
+  /*
+   * الترجمة الاحتياطية عبر Google Translate.
+   */
   try {
     const url =
       'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
@@ -998,16 +1039,23 @@ async function requestTranslation(text, targetLang) {
       encodeURIComponent(clean);
 
     const res = await fetch(url);
+
     if (!res.ok) return '';
 
     const data = await res.json();
 
     const translated = Array.isArray(data) && Array.isArray(data[0])
-      ? data[0].map(part => Array.isArray(part) ? part[0] : '').join('')
+      ? data[0]
+          .map(part => Array.isArray(part) ? part[0] : '')
+          .join('')
       : '';
 
-    return isValidTranslation(clean, translated) ? translated : '';
+    return isValidTranslation(clean, translated)
+      ? translated
+      : '';
+
   } catch (e) {
+    console.warn('Google translation failed:', e);
     return '';
   }
 }
@@ -1023,35 +1071,222 @@ async function translateText(text, targetLang, el = null) {
 
   if (!clean || targetLang === 'ar') return original;
 
+  /*
+   * أسماء الكتّاب تُكتب بالحروف اللاتينية،
+   * ولا تُرسل إلى خدمة الترجمة.
+   */
   if (
     el &&
-    (el.hasAttribute('data-author-name') ||
-      el.closest('[data-author-name]'))
+    (
+      el.hasAttribute('data-author-name') ||
+      el.closest('[data-author-name]')
+    )
   ) {
-    return original.replace(clean, transliterateArabicName(clean));
+    return original.replace(
+      clean,
+      transliterateArabicName(clean)
+    );
   }
 
   const cached = readCachedTranslation(targetLang, clean);
-  if (cached !== null) return original.replace(clean, cached);
 
-  const protectedData = protectQuotedTitles(clean);
+  if (cached !== null) {
+    return original.replace(clean, cached);
+  }
 
-  const translated = await requestTranslation(
-    protectedData.output,
-    targetLang
-  );
+  const translated = await requestTranslation(clean, targetLang);
 
   if (!translated) return original;
 
-  const restored = restoreQuotedTitles(
-    translated,
-    protectedData.protectedItems
-  );
+  if (!isValidTranslation(clean, translated)) {
+    return original;
+  }
 
-  if (!isValidTranslation(clean, restored)) return original;
+  writeCachedTranslation(targetLang, clean, translated);
 
-  writeCachedTranslation(targetLang, clean, restored);
-  return original.replace(clean, restored);
+  return original.replace(clean, translated);
+}
+
+
+/* =========================================================
+   SPLIT LONG TEXT
+   تقسيم المقال الطويل إلى أجزاء صغيرة
+========================================================= */
+
+function splitTextForTranslation(text, maxLength = 850) {
+  const source = String(text ?? '');
+  const chunks = [];
+
+  let remaining = source;
+
+  while (remaining.length > maxLength) {
+    let cut = maxLength;
+
+    /*
+     * نحاول التوقف عند نهاية جملة أولاً.
+     */
+    const sentenceEnd = Math.max(
+      remaining.lastIndexOf('. ', maxLength),
+      remaining.lastIndexOf('؟ ', maxLength),
+      remaining.lastIndexOf('! ', maxLength),
+      remaining.lastIndexOf('؛ ', maxLength),
+      remaining.lastIndexOf('، ', maxLength),
+      remaining.lastIndexOf('\n', maxLength)
+    );
+
+    if (sentenceEnd > maxLength * 0.5) {
+      cut = sentenceEnd + 1;
+    } else {
+      /*
+       * إذا لم نجد نهاية جملة، نتوقف عند آخر مسافة.
+       */
+      const space = remaining.lastIndexOf(' ', maxLength);
+
+      if (space > maxLength * 0.5) {
+        cut = space + 1;
+      }
+    }
+
+    if (cut <= 0) cut = maxLength;
+
+    chunks.push(remaining.slice(0, cut));
+    remaining = remaining.slice(cut);
+  }
+
+  if (remaining.length) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+}
+
+
+/* =========================================================
+   WHOLE ARTICLE TRANSLATION
+========================================================= */
+
+function translationLooksComplete(source, translated) {
+  const original = String(source ?? '').trim();
+  const result = String(translated ?? '').trim();
+
+  if (!original || !result) return false;
+
+  if (!isValidTranslation(original, result)) {
+    return false;
+  }
+
+  /*
+   * التحقق من أن الترجمة لم تفقد معظم حجم المقال.
+   * لا نعتمد على عدد الفقرات لأن خدمات الترجمة
+   * قد تغيّر توزيع الأسطر والفواصل.
+   */
+  if (
+    original.length > 500 &&
+    result.length < original.length * 0.20
+  ) {
+    return false;
+  }
+
+  const originalParagraphs = articleParagraphs(original);
+  const translatedParagraphs = articleParagraphs(result);
+
+  if (
+    originalParagraphs.length >= 5 &&
+    translatedParagraphs.length < 1
+  ) {
+    return false;
+  }
+
+  const sourceLast = originalParagraphs[
+    originalParagraphs.length - 1
+  ] || '';
+
+  const resultLast = translatedParagraphs[
+    translatedParagraphs.length - 1
+  ] || '';
+
+  if (
+    sourceLast.length > 35 &&
+    resultLast.length < 8
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+async function translateWholeArticle(content, lang) {
+  const original = String(content ?? '');
+
+  if (!original.trim() || lang === 'ar') {
+    return original;
+  }
+
+  /*
+   * استعمال الترجمة المحفوظة إذا كانت كاملة.
+   */
+  const cached = readCachedTranslation(lang, original);
+
+  if (
+    cached &&
+    translationLooksComplete(original, cached)
+  ) {
+    return cached;
+  }
+
+  /*
+   * تقسيم المقال إلى أجزاء قصيرة.
+   * تتم ترجمة كل جزء على حدة لتفادي تجاوز حدود الخدمة.
+   */
+  const chunks = splitTextForTranslation(original, 850);
+
+  if (!chunks.length) return original;
+
+  const translatedChunks = [];
+
+  /*
+   * الترجمة بالتتابع لتفادي إرسال طلبات كثيرة في وقت واحد.
+   */
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+
+    if (!chunk.trim()) {
+      translatedChunks.push(chunk);
+      continue;
+    }
+
+    const translated = await requestTranslation(chunk, lang);
+
+    /*
+     * إذا فشل جزء واحد، لا نعرض ترجمة مبتورة.
+     */
+    if (!translated || !isValidTranslation(chunk, translated)) {
+      console.warn(
+        'Article translation stopped at chunk:',
+        i + 1,
+        'of',
+        chunks.length
+      );
+
+      return original;
+    }
+
+    translatedChunks.push(translated);
+  }
+
+  const result = translatedChunks.join('');
+
+  /*
+   * التحقق النهائي قبل حفظ الترجمة.
+   */
+  if (!translationLooksComplete(original, result)) {
+    console.warn('Incomplete article translation rejected.');
+    return original;
+  }
+
+  writeCachedTranslation(lang, original, result);
+
+  return result;
 }
 
 
@@ -1072,20 +1307,25 @@ function shouldSkipTranslationNode(node) {
     parent.closest(
       'script,style,noscript,textarea,input,select,option,svg,code,pre'
     )
-  ) return true;
+  ) {
+    return true;
+  }
 
   if (
     parent.closest(
       '#languageSelect,.brand,footer .foot-logo,' +
       '[data-no-translate],#ccArticleReader'
     )
-  ) return true;
+  ) {
+    return true;
+  }
 
   return false;
 }
 
 function collectTranslatableTextNodes() {
   const nodes = [];
+
   const walker = document.createTreeWalker(
     document.body,
     NodeFilter.SHOW_TEXT
@@ -1110,15 +1350,25 @@ async function applyLanguageToDom(lang) {
   applyHtmlDirection(lang);
 
   const select = $('#languageSelect');
-  if (select && select.value !== lang) select.value = lang;
+
+  if (select && select.value !== lang) {
+    select.value = lang;
+  }
 
   const nodes = collectTranslatableTextNodes();
 
+  /*
+   * العودة إلى العربية الأصلية.
+   */
   if (lang === 'ar') {
     nodes.forEach(node => {
       const original = CC_ORIGINAL_TEXT_NODES.get(node);
-      if (original !== undefined) node.textContent = original;
+
+      if (original !== undefined) {
+        node.textContent = original;
+      }
     });
+
     return;
   }
 
@@ -1164,72 +1414,6 @@ async function applyLanguageToDom(lang) {
   await Promise.all(
     Array.from({ length: concurrency }, worker)
   );
-}
-
-
-/* =========================================================
-   WHOLE ARTICLE TRANSLATION
-========================================================= */
-
-function translationLooksComplete(source, translated) {
-  const original = String(source ?? '').trim();
-  const result = String(translated ?? '').trim();
-
-  if (!original || !result) return false;
-  if (!isValidTranslation(original, result)) return false;
-
-  const originalParagraphs = articleParagraphs(original);
-  const translatedParagraphs = articleParagraphs(result);
-
-  if (
-    originalParagraphs.length > 2 &&
-    translatedParagraphs.length < Math.max(
-      1,
-      Math.floor(originalParagraphs.length * 0.55)
-    )
-  ) {
-    return false;
-  }
-
-  const sourceLast = originalParagraphs[originalParagraphs.length - 1] || '';
-  const resultLast = translatedParagraphs[translatedParagraphs.length - 1] || '';
-
-  if (sourceLast.length > 35 && resultLast.length < 8) return false;
-
-  return true;
-}
-
-async function translateWholeArticle(content, lang) {
-  const original = String(content ?? '');
-
-  if (!original.trim() || lang === 'ar') return original;
-
-  const cached = readCachedTranslation(lang, original);
-
-  if (cached && translationLooksComplete(original, cached)) {
-    return cached;
-  }
-
-  const protectedData = protectQuotedTitles(original);
-
-  const translated = await requestTranslation(
-    protectedData.output,
-    lang
-  );
-
-  if (!translated) return original;
-
-  const restored = restoreQuotedTitles(
-    translated,
-    protectedData.protectedItems
-  );
-
-  if (!translationLooksComplete(original, restored)) {
-    return original;
-  }
-
-  writeCachedTranslation(lang, original, restored);
-  return restored;
 }
 
 
@@ -1293,10 +1477,14 @@ async function openArticle(id, keepReaderOpen = false) {
 
   window.__CC_OPEN_ARTICLE__ = article;
 
-  /* لا نزيد المشاهدات عند إعادة عرض المقال بسبب تغيير اللغة */
+  /*
+   * لا نزيد المشاهدات عند إعادة عرض المقال بسبب تغيير اللغة.
+   */
   if (!keepReaderOpen) {
     Promise.resolve(
-      db.rpc('increment_views', { article_id: article.id })
+      db.rpc('increment_views', {
+        article_id: article.id
+      })
     )
       .then(result => {
         if (result && result.error) {
@@ -1310,8 +1498,14 @@ async function openArticle(id, keepReaderOpen = false) {
           '.cc-article-date .views'
         );
 
-        if (badge && window.__CC_OPEN_ARTICLE__?.id === article.id) {
-          badge.textContent = viewsLabel(article.views, getCurrentLang());
+        if (
+          badge &&
+          window.__CC_OPEN_ARTICLE__?.id === article.id
+        ) {
+          badge.textContent = viewsLabel(
+            article.views,
+            getCurrentLang()
+          );
         }
       })
       .catch(() => {});
@@ -1336,12 +1530,21 @@ async function openArticle(id, keepReaderOpen = false) {
 
   let articleContent = String(article.content || '');
 
+  /*
+   * ترجمة متن المقال كاملاً على أجزاء.
+   */
   if (lang !== 'ar' && articleContent.trim()) {
-    articleContent = await translateWholeArticle(articleContent, lang);
+    articleContent = await translateWholeArticle(
+      articleContent,
+      lang
+    );
   }
 
   if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
 
+  /*
+   * ترجمة العنوان والقسم كل على حدة.
+   */
   const [translatedTitle, translatedCategory] = lang === 'ar'
     ? [
         article.title || '',
@@ -1349,7 +1552,10 @@ async function openArticle(id, keepReaderOpen = false) {
       ]
     : await Promise.all([
         translateText(article.title || '', lang),
-        translateText(article.category || 'نقد سينمائي', lang)
+        translateText(
+          article.category || 'نقد سينمائي',
+          lang
+        )
       ]);
 
   if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
@@ -1400,6 +1606,7 @@ async function openArticle(id, keepReaderOpen = false) {
               : 'No article text is available.'
         }
       </div>
+
       ${image2 ? articleImage(image2, translatedTitle) : ''}
       ${image3 ? articleImage(image3, translatedTitle) : ''}
     `;
@@ -1514,6 +1721,7 @@ function closeArticle() {
 function formatArticleDate(value, lang = getCurrentLang()) {
   try {
     const date = new Date(value);
+
     if (Number.isNaN(date.getTime())) return '';
 
     const locale = lang === 'fr'
@@ -1527,6 +1735,7 @@ function formatArticleDate(value, lang = getCurrentLang()) {
       month: 'long',
       day: 'numeric'
     }).format(date);
+
   } catch (e) {
     return '';
   }
@@ -1539,6 +1748,7 @@ function formatArticleDate(value, lang = getCurrentLang()) {
 
 function openArticleFromHash() {
   const hash = location.hash || '';
+
   if (!hash.startsWith('#article-')) return;
 
   let id = hash.slice(9);
@@ -1597,11 +1807,17 @@ async function renderArchivePage(mode) {
     titleTarget.textContent = match ? match.name : key;
 
     if (descTarget) {
-      descTarget.textContent = match ? (match.description || '') : '';
+      descTarget.textContent = match
+        ? (match.description || '')
+        : '';
     }
 
     const eyebrow = $('#pageEyebrow');
-    if (eyebrow) eyebrow.textContent = 'قسم';
+
+    if (eyebrow) {
+      eyebrow.textContent = 'قسم';
+    }
+
   } else {
     list = list.filter(
       x => normalizeName(x.author) === wanted
@@ -1610,10 +1826,15 @@ async function renderArchivePage(mode) {
     titleTarget.textContent = key || 'كاتب';
     titleTarget.setAttribute('data-author-name', '1');
 
-    if (descTarget) descTarget.textContent = '';
+    if (descTarget) {
+      descTarget.textContent = '';
+    }
 
     const eyebrow = $('#pageEyebrow');
-    if (eyebrow) eyebrow.textContent = 'كاتب';
+
+    if (eyebrow) {
+      eyebrow.textContent = 'كاتب';
+    }
   }
 
   document.title = titleTarget.textContent + ' | ضد السينما';
@@ -1623,7 +1844,13 @@ async function renderArchivePage(mode) {
 
   if (!list.length) {
     window.__CC_ARTICLES__ = [];
-    target.innerHTML = `<div class="empty">لا توجد مقالات منشورة هنا بعد.</div>`;
+
+    target.innerHTML = `
+      <div class="empty">
+        لا توجد مقالات منشورة هنا بعد.
+      </div>
+    `;
+
     return;
   }
 
@@ -1671,14 +1898,20 @@ async function main() {
     path.endsWith('author.html')
   ) {
     await renderArchivePage(
-      path.endsWith('section.html') ? 'section' : 'author'
+      path.endsWith('section.html')
+        ? 'section'
+        : 'author'
     );
 
     await applyLanguageToDom(getCurrentLang());
 
     if (!window.__CC_HASH_LISTENER__) {
       window.__CC_HASH_LISTENER__ = true;
-      window.addEventListener('hashchange', openArticleFromHash);
+
+      window.addEventListener(
+        'hashchange',
+        openArticleFromHash
+      );
     }
 
     return;
@@ -1706,7 +1939,9 @@ async function main() {
       .catch(() => null)
   ]);
 
-  const all = issues.length ? issues : fallbackIssues;
+  const all = issues.length
+    ? issues
+    : fallbackIssues;
 
   renderIssues(all);
   renderSections(sections);
@@ -1719,15 +1954,21 @@ async function main() {
   renderEditors(editors);
 
   let current = settings?.current_issue_id
-    ? issues.find(x => x.id === settings.current_issue_id)
+    ? issues.find(
+        x => x.id === settings.current_issue_id
+      )
     : null;
 
-  if (!current) current = issues[0] || null;
+  if (!current) {
+    current = issues[0] || null;
+  }
 
   renderCurrent(current);
 
   if (settings) {
-    if (settings.site_name) document.title = settings.site_name;
+    if (settings.site_name) {
+      document.title = settings.site_name;
+    }
 
     if (settings.hero_title && $('#heroTitle')) {
       $('#heroTitle').textContent = settings.hero_title;
@@ -1750,8 +1991,11 @@ async function main() {
     }
 
     if (settings.contact_email && $('#contactEmail')) {
-      $('#contactEmail').href = 'mailto:' + settings.contact_email;
-      $('#contactEmail').textContent = settings.contact_email;
+      $('#contactEmail').href =
+        'mailto:' + settings.contact_email;
+
+      $('#contactEmail').textContent =
+        settings.contact_email;
     }
   }
 
@@ -1764,7 +2008,11 @@ async function main() {
 
   if (!window.__CC_HASH_LISTENER__) {
     window.__CC_HASH_LISTENER__ = true;
-    window.addEventListener('hashchange', openArticleFromHash);
+
+    window.addEventListener(
+      'hashchange',
+      openArticleFromHash
+    );
   }
 }
 
