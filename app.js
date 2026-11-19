@@ -366,7 +366,8 @@ function articleCard(x) {
                  <a class="cc-card-author-link"
                     href="author.html?name=${encodeURIComponent(x.author)}"
                     data-author-link
-                    data-author-name="1">${esc(x.author)}</a>
+                    data-author-name="1"
+                    data-ar-name="${esc(x.author)}">${esc(x.author)}</a>
                </small>`
             : ''
         }
@@ -439,7 +440,7 @@ function renderTeam(items) {
             }
           </div>
 
-          <h3 data-author-name="1">${esc(x.name)}</h3>
+          <h3 data-author-name="1" data-ar-name="${esc(x.name)}">${esc(x.name)}</h3>
           <div class="role">${esc(x.role || '')}</div>
           <p>${esc(x.bio || '')}</p>
         </article>
@@ -470,7 +471,7 @@ function renderEditors(items) {
               }
             </div>
 
-            <h3 data-author-name="1">${esc(fullName)}</h3>
+            <h3 data-author-name="1" data-ar-name="${esc(fullName)}">${esc(fullName)}</h3>
 
             ${x.bio ? `<p class="editor-bio">${esc(x.bio)}</p>` : ''}
           </article>
@@ -791,9 +792,7 @@ function bindShareCopy(article, lang = 'ar') {
 ========================================================= */
 
 const CC_LANG_KEY = 'cc-lang';
-
-/* إصدار جديد لتجنب استعمال الترجمات القديمة الناقصة */
-const CC_CACHE_PREFIX = 'cc_tr_v8_';
+const CC_CACHE_PREFIX = 'cc_tr_v9_';
 
 const CC_MEMORY_CACHE = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
@@ -878,7 +877,7 @@ function clearOldTranslationCache() {
 
       if (
         key &&
-        /^cc_tr_v[1-7]_/.test(key) &&
+        /^cc_tr_v[1-8]_/.test(key) &&
         !key.startsWith(CC_CACHE_PREFIX)
       ) {
         keysToRemove.push(key);
@@ -929,11 +928,8 @@ function isValidTranslation(original, translated) {
   const source = String(original ?? '').trim();
   const result = String(translated ?? '').trim();
 
-  if (!source || !result || result === source) return false;
-
-  if (source.length > 300 && result.length < source.length * 0.18) {
-    return false;
-  }
+  if (!source || !result) return false;
+  if (result === source && /[\u0600-\u06FF]/.test(source)) return false;
 
   return true;
 }
@@ -976,14 +972,12 @@ function writeCachedTranslation(lang, text, translated) {
    TRANSLATION REQUEST
 ========================================================= */
 
-async function requestTranslation(text, targetLang) {
-  const clean = String(text ?? '').trim();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+async function requestTranslationOnce(text, targetLang) {
+  const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
 
-  /*
-   * إذا كان لديك خادم ترجمة خاص، تتم تجربته أولاً.
-   */
   if (window.CC_AI_TRANSLATE_ENDPOINT) {
     try {
       const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
@@ -995,22 +989,12 @@ async function requestTranslation(text, targetLang) {
           text: clean,
           sourceLang: 'ar',
           targetLang,
-          domain: 'cinema criticism magazine',
-          instructions: [
-            'Translate the complete text without summarizing.',
-            'Do not omit any sentence, paragraph, or ending.',
-            'Preserve the original paragraph order.',
-            'Translate all ordinary quoted text.',
-            'Do not translate personal names by meaning.',
-            'Do not invent official foreign film titles.',
-            'Return only the complete translation.'
-          ].join(' ')
+          domain: 'cinema criticism magazine'
         })
       });
 
       if (res.ok) {
         const data = await res.json();
-
         const out = String(
           (data && (
             data.translatedText ||
@@ -1023,14 +1007,9 @@ async function requestTranslation(text, targetLang) {
           return out;
         }
       }
-    } catch (e) {
-      console.warn('Custom translation endpoint failed:', e);
-    }
+    } catch (e) {}
   }
 
-  /*
-   * الترجمة الاحتياطية عبر Google Translate.
-   */
   try {
     const url =
       'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
@@ -1039,25 +1018,31 @@ async function requestTranslation(text, targetLang) {
       encodeURIComponent(clean);
 
     const res = await fetch(url);
-
     if (!res.ok) return '';
 
     const data = await res.json();
-
     const translated = Array.isArray(data) && Array.isArray(data[0])
       ? data[0]
           .map(part => Array.isArray(part) ? part[0] : '')
           .join('')
+          .trim()
       : '';
 
-    return isValidTranslation(clean, translated)
-      ? translated
-      : '';
-
+    return isValidTranslation(clean, translated) ? translated : '';
   } catch (e) {
-    console.warn('Google translation failed:', e);
     return '';
   }
+}
+
+async function requestTranslation(text, targetLang, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const out = await requestTranslationOnce(text, targetLang);
+    if (out) return out;
+    if (attempt < retries) {
+      await sleep(300 * (attempt + 1));
+    }
+  }
+  return '';
 }
 
 
@@ -1071,49 +1056,35 @@ async function translateText(text, targetLang, el = null) {
 
   if (!clean || targetLang === 'ar') return original;
 
-  /*
-   * أسماء الكتّاب تُكتب بالحروف اللاتينية،
-   * ولا تُرسل إلى خدمة الترجمة.
-   */
-  if (
-    el &&
-    (
-      el.hasAttribute('data-author-name') ||
-      el.closest('[data-author-name]')
-    )
-  ) {
-    return original.replace(
-      clean,
-      transliterateArabicName(clean)
-    );
+  const authorEl = el
+    ? (el.hasAttribute('data-author-name') ? el : el.closest('[data-author-name]'))
+    : null;
+
+  if (authorEl) {
+    const arSource = authorEl.dataset.arName || clean;
+    return original.replace(clean, transliterateArabicName(arSource));
   }
 
   const cached = readCachedTranslation(targetLang, clean);
-
   if (cached !== null) {
     return original.replace(clean, cached);
   }
 
   const translated = await requestTranslation(clean, targetLang);
-
-  if (!translated) return original;
-
-  if (!isValidTranslation(clean, translated)) {
+  if (!translated || !isValidTranslation(clean, translated)) {
     return original;
   }
 
   writeCachedTranslation(targetLang, clean, translated);
-
   return original.replace(clean, translated);
 }
 
 
 /* =========================================================
    SPLIT LONG TEXT
-   تقسيم المقال الطويل إلى أجزاء صغيرة
 ========================================================= */
 
-function splitTextForTranslation(text, maxLength = 850) {
+function splitTextForTranslation(text, maxLength = 750) {
   const source = String(text ?? '');
   const chunks = [];
 
@@ -1122,9 +1093,6 @@ function splitTextForTranslation(text, maxLength = 850) {
   while (remaining.length > maxLength) {
     let cut = maxLength;
 
-    /*
-     * نحاول التوقف عند نهاية جملة أولاً.
-     */
     const sentenceEnd = Math.max(
       remaining.lastIndexOf('. ', maxLength),
       remaining.lastIndexOf('؟ ', maxLength),
@@ -1134,15 +1102,11 @@ function splitTextForTranslation(text, maxLength = 850) {
       remaining.lastIndexOf('\n', maxLength)
     );
 
-    if (sentenceEnd > maxLength * 0.5) {
+    if (sentenceEnd > maxLength * 0.45) {
       cut = sentenceEnd + 1;
     } else {
-      /*
-       * إذا لم نجد نهاية جملة، نتوقف عند آخر مسافة.
-       */
       const space = remaining.lastIndexOf(' ', maxLength);
-
-      if (space > maxLength * 0.5) {
+      if (space > maxLength * 0.45) {
         cut = space + 1;
       }
     }
@@ -1165,56 +1129,6 @@ function splitTextForTranslation(text, maxLength = 850) {
    WHOLE ARTICLE TRANSLATION
 ========================================================= */
 
-function translationLooksComplete(source, translated) {
-  const original = String(source ?? '').trim();
-  const result = String(translated ?? '').trim();
-
-  if (!original || !result) return false;
-
-  if (!isValidTranslation(original, result)) {
-    return false;
-  }
-
-  /*
-   * التحقق من أن الترجمة لم تفقد معظم حجم المقال.
-   * لا نعتمد على عدد الفقرات لأن خدمات الترجمة
-   * قد تغيّر توزيع الأسطر والفواصل.
-   */
-  if (
-    original.length > 500 &&
-    result.length < original.length * 0.20
-  ) {
-    return false;
-  }
-
-  const originalParagraphs = articleParagraphs(original);
-  const translatedParagraphs = articleParagraphs(result);
-
-  if (
-    originalParagraphs.length >= 5 &&
-    translatedParagraphs.length < 1
-  ) {
-    return false;
-  }
-
-  const sourceLast = originalParagraphs[
-    originalParagraphs.length - 1
-  ] || '';
-
-  const resultLast = translatedParagraphs[
-    translatedParagraphs.length - 1
-  ] || '';
-
-  if (
-    sourceLast.length > 35 &&
-    resultLast.length < 8
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
 async function translateWholeArticle(content, lang) {
   const original = String(content ?? '');
 
@@ -1222,31 +1136,17 @@ async function translateWholeArticle(content, lang) {
     return original;
   }
 
-  /*
-   * استعمال الترجمة المحفوظة إذا كانت كاملة.
-   */
   const cached = readCachedTranslation(lang, original);
-
-  if (
-    cached &&
-    translationLooksComplete(original, cached)
-  ) {
+  if (cached) {
     return cached;
   }
 
-  /*
-   * تقسيم المقال إلى أجزاء قصيرة.
-   * تتم ترجمة كل جزء على حدة لتفادي تجاوز حدود الخدمة.
-   */
-  const chunks = splitTextForTranslation(original, 850);
-
+  const chunks = splitTextForTranslation(original, 750);
   if (!chunks.length) return original;
 
   const translatedChunks = [];
+  let anyTranslated = false;
 
-  /*
-   * الترجمة بالتتابع لتفادي إرسال طلبات كثيرة في وقت واحد.
-   */
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
 
@@ -1255,44 +1155,39 @@ async function translateWholeArticle(content, lang) {
       continue;
     }
 
-    const translated = await requestTranslation(chunk, lang);
-
-    /*
-     * إذا فشل جزء واحد، لا نعرض ترجمة مبتورة.
-     */
-    if (!translated || !isValidTranslation(chunk, translated)) {
-      console.warn(
-        'Article translation stopped at chunk:',
-        i + 1,
-        'of',
-        chunks.length
-      );
-
-      return original;
+    const chunkCached = readCachedTranslation(lang, chunk);
+    if (chunkCached) {
+      translatedChunks.push(chunkCached);
+      anyTranslated = true;
+      continue;
     }
 
-    translatedChunks.push(translated);
+    const translated = await requestTranslation(chunk, lang);
+    if (translated && isValidTranslation(chunk, translated)) {
+      writeCachedTranslation(lang, chunk, translated);
+      translatedChunks.push(translated);
+      anyTranslated = true;
+    } else {
+      translatedChunks.push(chunk);
+    }
+
+    if (i < chunks.length - 1) {
+      await sleep(120);
+    }
   }
 
-  const result = translatedChunks.join('');
-
-  /*
-   * التحقق النهائي قبل حفظ الترجمة.
-   */
-  if (!translationLooksComplete(original, result)) {
-    console.warn('Incomplete article translation rejected.');
+  if (!anyTranslated) {
     return original;
   }
 
+  const result = translatedChunks.join('');
   writeCachedTranslation(lang, original, result);
-
   return result;
 }
 
 
 /* =========================================================
    SAFE DOM TRANSLATION
-   Uses text nodes, including text inside nested elements.
 ========================================================= */
 
 function shouldSkipTranslationNode(node) {
@@ -1350,20 +1245,24 @@ async function applyLanguageToDom(lang) {
   applyHtmlDirection(lang);
 
   const select = $('#languageSelect');
-
   if (select && select.value !== lang) {
     select.value = lang;
   }
 
   const nodes = collectTranslatableTextNodes();
 
-  /*
-   * العودة إلى العربية الأصلية.
-   */
   if (lang === 'ar') {
     nodes.forEach(node => {
-      const original = CC_ORIGINAL_TEXT_NODES.get(node);
+      const authorEl = node.parentElement?.hasAttribute('data-author-name')
+        ? node.parentElement
+        : node.parentElement?.closest('[data-author-name]');
 
+      if (authorEl && authorEl.dataset.arName) {
+        node.textContent = authorEl.dataset.arName;
+        return;
+      }
+
+      const original = CC_ORIGINAL_TEXT_NODES.get(node);
       if (original !== undefined) {
         node.textContent = original;
       }
@@ -1373,8 +1272,15 @@ async function applyLanguageToDom(lang) {
   }
 
   const batch = nodes.map(node => {
+    const authorEl = node.parentElement?.hasAttribute('data-author-name')
+      ? node.parentElement
+      : node.parentElement?.closest('[data-author-name]');
+
     if (!CC_ORIGINAL_TEXT_NODES.has(node)) {
-      CC_ORIGINAL_TEXT_NODES.set(node, node.textContent);
+      const baseText = (authorEl && authorEl.dataset.arName)
+        ? authorEl.dataset.arName
+        : node.textContent;
+      CC_ORIGINAL_TEXT_NODES.set(node, baseText);
     }
 
     return {
@@ -1385,14 +1291,13 @@ async function applyLanguageToDom(lang) {
   });
 
   let index = 0;
-  const concurrency = 5;
+  const concurrency = 3;
 
   async function worker() {
     while (index < batch.length) {
       if (runId !== CC_TRANSLATION_RUN) return;
 
       const current = batch[index++];
-
       if (!current.node.isConnected) continue;
 
       const translated = await translateText(
@@ -1477,9 +1382,6 @@ async function openArticle(id, keepReaderOpen = false) {
 
   window.__CC_OPEN_ARTICLE__ = article;
 
-  /*
-   * لا نزيد المشاهدات عند إعادة عرض المقال بسبب تغيير اللغة.
-   */
   if (!keepReaderOpen) {
     Promise.resolve(
       db.rpc('increment_views', {
@@ -1530,9 +1432,6 @@ async function openArticle(id, keepReaderOpen = false) {
 
   let articleContent = String(article.content || '');
 
-  /*
-   * ترجمة متن المقال كاملاً على أجزاء.
-   */
   if (lang !== 'ar' && articleContent.trim()) {
     articleContent = await translateWholeArticle(
       articleContent,
@@ -1542,9 +1441,6 @@ async function openArticle(id, keepReaderOpen = false) {
 
   if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
 
-  /*
-   * ترجمة العنوان والقسم كل على حدة.
-   */
   const [translatedTitle, translatedCategory] = lang === 'ar'
     ? [
         article.title || '',
@@ -1612,12 +1508,13 @@ async function openArticle(id, keepReaderOpen = false) {
     `;
   }
 
-  const authorName = article.author
-    ? transliterateArabicName(article.author)
+  const rawAuthor = String(article.author || '').trim();
+  const displayAuthor = rawAuthor
+    ? (lang === 'ar' ? rawAuthor : transliterateArabicName(rawAuthor))
     : '';
 
-  const authorPlaceholder = authorName
-    ? authorName.slice(0, 1)
+  const authorPlaceholder = displayAuthor
+    ? displayAuthor.slice(0, 1)
     : (lang === 'ar' ? 'ك' : 'C');
 
   const authorLabel = lang === 'fr'
@@ -1640,15 +1537,16 @@ async function openArticle(id, keepReaderOpen = false) {
     <div class="cc-article-author">
       ${
         authorImage
-          ? `<img class="cc-author-photo" src="${esc(authorImage)}" alt="${esc(authorName || authorLabel)}">`
+          ? `<img class="cc-author-photo" src="${esc(authorImage)}" alt="${esc(displayAuthor || authorLabel)}">`
           : `<div class="cc-author-placeholder">${esc(authorPlaceholder)}</div>`
       }
 
       ${
-        article.author
+        rawAuthor
           ? `<a class="cc-author-link"
-                href="author.html?name=${encodeURIComponent(article.author)}"
-                data-author-name="1">${esc(authorName)}</a>`
+                href="author.html?name=${encodeURIComponent(rawAuthor)}"
+                data-author-name="1"
+                data-ar-name="${esc(rawAuthor)}">${esc(displayAuthor)}</a>`
           : `<span>${authorLabel}</span>`
       }
     </div>
@@ -1823,8 +1721,10 @@ async function renderArchivePage(mode) {
       x => normalizeName(x.author) === wanted
     );
 
-    titleTarget.textContent = key || 'كاتب';
+    const cleanAuthor = key || 'كاتب';
+    titleTarget.textContent = cleanAuthor;
     titleTarget.setAttribute('data-author-name', '1');
+    titleTarget.setAttribute('data-ar-name', cleanAuthor);
 
     if (descTarget) {
       descTarget.textContent = '';
