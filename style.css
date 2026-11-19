@@ -322,57 +322,65 @@ html[dir="ltr"] .foot {
   direction: ltr;
 }
 
-/* منع التمدد الأفقي وكسر النصوص الطويلة عند التحويل إلى LTR */
+/* ضبط شبكة المقالات والعناصر عند التحويل إلى LTR فقط */
 html[dir="ltr"],
-html[dir="ltr"] body,
-html[dir="ltr"] main,
-html[dir="ltr"] section,
-html[dir="ltr"] article,
-html[dir="ltr"] .wrap,
-html[dir="ltr"] .current-grid,
-html[dir="ltr"] .issues-grid,
-html[dir="ltr"] .sections-grid,
-html[dir="ltr"] .articles-grid,
-html[dir="ltr"] .team-grid,
-html[dir="ltr"] .about-inner,
-html[dir="ltr"] .contact,
-html[dir="ltr"] .foot {
-  max-width: 100vw !important;
-  overflow-x: clip !important;
+html[dir="ltr"] body {
+  max-width: 100%;
+  overflow-x: clip;
 }
 
-html[dir="ltr"] p,
-html[dir="ltr"] h1,
-html[dir="ltr"] h2,
-html[dir="ltr"] h3,
-html[dir="ltr"] a,
-html[dir="ltr"] strong,
-html[dir="ltr"] small,
-html[dir="ltr"] span {
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-  max-width: 100% !important;
+html[dir="ltr"] .articles-grid,
+html[dir="ltr"] .sections-grid,
+html[dir="ltr"] .team-grid,
+html[dir="ltr"] .current-grid,
+html[dir="ltr"] .about-inner {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html[dir="ltr"] .sections-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html[dir="ltr"] .current-grid {
+  grid-template-columns: 330px minmax(0, 1fr);
+}
+
+html[dir="ltr"] .about-inner {
+  grid-template-columns: .7fr 1.3fr;
+}
+
+html[dir="ltr"] .article-card,
+html[dir="ltr"] .article-card-content,
+html[dir="ltr"] .article-card h3,
+html[dir="ltr"] .article-card p,
+html[dir="ltr"] .article-card small {
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 @media (max-width: 900px) {
-  .hero,
-  .current-grid,
-  .sections-grid,
-  .articles-grid,
-  .team-grid,
-  .about-inner {
+  html[dir="ltr"] .articles-grid,
+  html[dir="ltr"] .team-grid,
+  html[dir="ltr"] .sections-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[dir="ltr"] .current-grid,
+  html[dir="ltr"] .about-inner {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  html[dir="ltr"] .articles-grid,
+  html[dir="ltr"] .team-grid,
+  html[dir="ltr"] .sections-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  .hero-copy,
-  .hero-text-panel,
-  .current-info,
-  .article-card,
-  .article-card-content,
-  .person {
-    max-width: 100% !important;
-    min-width: 0 !important;
-    overflow-wrap: anywhere;
+  html[dir="ltr"] .article-card h3 {
+    font-size: 21px;
+    line-height: 1.35;
   }
 }
 
