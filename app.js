@@ -1014,6 +1014,7 @@ async function requestTranslationOnce(text, targetLang) {
     } catch (e) {}
   }
 
+  // 1. Google Translate
   try {
     const url =
       'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
@@ -1037,6 +1038,7 @@ async function requestTranslationOnce(text, targetLang) {
     }
   } catch (e) {}
 
+  // 2. MyMemory
   try {
     const mmUrl =
       'https://api.mymemory.translated.net/get?q=' +
@@ -1050,6 +1052,24 @@ async function requestTranslationOnce(text, targetLang) {
       const mmText = String(mmData?.responseData?.translatedText || '').trim();
       if (isValidTranslation(clean, mmText)) {
         return mmText;
+      }
+    }
+  } catch (e) {}
+
+  // 3. Lingva Translate fallback
+  try {
+    const lvUrl =
+      'https://lingva.ml/api/v1/ar/' +
+      encodeURIComponent(targetLang) +
+      '/' +
+      encodeURIComponent(clean);
+
+    const lvRes = await fetch(lvUrl);
+    if (lvRes.ok) {
+      const lvData = await lvRes.json();
+      const lvText = String(lvData?.translation || '').trim();
+      if (isValidTranslation(clean, lvText)) {
+        return lvText;
       }
     }
   } catch (e) {}
@@ -1185,7 +1205,12 @@ async function translateWholeArticle(content, lang) {
       continue;
     }
 
-    const translated = await requestTranslation(chunk, lang);
+    let translated = await requestTranslation(chunk, lang);
+    if (!translated || !isValidTranslation(chunk, translated)) {
+      await sleep(600);
+      translated = await requestTranslation(chunk, lang, 1);
+    }
+
     if (translated && isValidTranslation(chunk, translated)) {
       writeCachedTranslation(lang, chunk, translated);
       translatedChunks.push(translated);
@@ -1195,7 +1220,7 @@ async function translateWholeArticle(content, lang) {
     }
 
     if (i < chunks.length - 1) {
-      await sleep(140);
+      await sleep(180);
     }
   }
 
