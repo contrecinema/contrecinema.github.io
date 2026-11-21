@@ -792,7 +792,7 @@ function bindShareCopy(article, lang = 'ar') {
 ========================================================= */
 
 const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v9_';
+const CC_CACHE_PREFIX = 'cc_tr_v10_';
 
 const CC_MEMORY_CACHE = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
@@ -877,7 +877,7 @@ function clearOldTranslationCache() {
 
       if (
         key &&
-        /^cc_tr_v[1-8]_/.test(key) &&
+        /^cc_tr_v[1-9]_/.test(key) &&
         !key.startsWith(CC_CACHE_PREFIX)
       ) {
         keysToRemove.push(key);
@@ -930,6 +930,10 @@ function isValidTranslation(original, translated) {
 
   if (!source || !result) return false;
   if (result === source && /[\u0600-\u06FF]/.test(source)) return false;
+
+  if (/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(result)) {
+    return false;
+  }
 
   return true;
 }
@@ -1010,7 +1014,6 @@ async function requestTranslationOnce(text, targetLang) {
     } catch (e) {}
   }
 
-  // 1. المحاولة الأولى عبر Google Translate
   try {
     const url =
       'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
@@ -1034,7 +1037,6 @@ async function requestTranslationOnce(text, targetLang) {
     }
   } catch (e) {}
 
-  // 2. محاولة احتياطية عبر MyMemory إذا لم تنجح المحاولة الأولى
   try {
     const mmUrl =
       'https://api.mymemory.translated.net/get?q=' +
@@ -1105,7 +1107,7 @@ async function translateText(text, targetLang, el = null) {
    SPLIT LONG TEXT
 ========================================================= */
 
-function splitTextForTranslation(text, maxLength = 750) {
+function splitTextForTranslation(text, maxLength = 400) {
   const source = String(text ?? '');
   const chunks = [];
 
@@ -1123,11 +1125,11 @@ function splitTextForTranslation(text, maxLength = 750) {
       remaining.lastIndexOf('\n', maxLength)
     );
 
-    if (sentenceEnd > maxLength * 0.45) {
+    if (sentenceEnd > maxLength * 0.4) {
       cut = sentenceEnd + 1;
     } else {
       const space = remaining.lastIndexOf(' ', maxLength);
-      if (space > maxLength * 0.45) {
+      if (space > maxLength * 0.4) {
         cut = space + 1;
       }
     }
@@ -1158,11 +1160,11 @@ async function translateWholeArticle(content, lang) {
   }
 
   const cached = readCachedTranslation(lang, original);
-  if (cached) {
+  if (cached && isValidTranslation(original, cached)) {
     return cached;
   }
 
-  const chunks = splitTextForTranslation(original, 750);
+  const chunks = splitTextForTranslation(original, 400);
   if (!chunks.length) return original;
 
   const translatedChunks = [];
@@ -1177,7 +1179,7 @@ async function translateWholeArticle(content, lang) {
     }
 
     const chunkCached = readCachedTranslation(lang, chunk);
-    if (chunkCached) {
+    if (chunkCached && isValidTranslation(chunk, chunkCached)) {
       translatedChunks.push(chunkCached);
       anyTranslated = true;
       continue;
@@ -1193,7 +1195,7 @@ async function translateWholeArticle(content, lang) {
     }
 
     if (i < chunks.length - 1) {
-      await sleep(120);
+      await sleep(140);
     }
   }
 
@@ -1202,6 +1204,10 @@ async function translateWholeArticle(content, lang) {
   }
 
   const result = translatedChunks.join('');
+  if (!isValidTranslation(original, result)) {
+    return original;
+  }
+
   writeCachedTranslation(lang, original, result);
   return result;
 }
