@@ -46,8 +46,8 @@ function normalizeName(value) {
     .normalize('NFC')
     .replace(/[\u0640]/g, '')
     .replace(/[\u064B-\u065F\u0670]/g, '')
-    .replace(/[Ø£Ø¥Ø¢Ù±]/g, 'Ø§')
-    .replace(/Ù‰/g, 'ÙŠ')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -124,21 +124,21 @@ document.querySelectorAll('#nav a').forEach(a => {
 const fallbackIssues = Array.from({ length: 9 }, (_, i) => ({
   id: 'fallback-' + (i + 1),
   issue_number: i + 1,
-  title: 'Ø§Ù„Ø¹Ø¯Ø¯ ' + (i + 1),
+  title: 'العدد ' + (i + 1),
   publication_date: '',
   pdf_url: '',
   cover_image: ''
 }));
 
 const fallbackSections = [
-  'Ø±Ø¤Ù‰ Ø³ÙŠÙ†Ù…Ø§Ø¦ÙŠØ©',
-  'Ù…Ø±Ø§Ø¬Ø¹Ø§Øª',
-  'Ø£ÙÙ„Ø§Ù… Ø§Ù„Ø´Ù‡Ø±',
-  'Ø¨Ø±ÙˆÙØ§ÙŠÙ„',
-  'Ù…Ù‡Ø±Ø¬Ø§Ù†Ø§Øª',
-  'Ø­ÙˆØ§Ø± Ø§Ù„Ø¹Ø¯Ø¯',
-  'Ø§Ù„Ù…Ù„Ù',
-  'Ù…ØªØ§Ø¨Ø¹Ø§Øª'
+  'رؤى سينمائية',
+  'مراجعات',
+  'أفلام الشهر',
+  'بروفايل',
+  'مهرجانات',
+  'حوار العدد',
+  'الملف',
+  'متابعات'
 ];
 
 
@@ -174,10 +174,10 @@ function cover(x) {
   const image = safeUrl(x.cover_image);
 
   if (image) {
-    return `<img src="${esc(image)}" alt="ØºÙ„Ø§Ù Ø§Ù„Ø¹Ø¯Ø¯ ${esc(x.issue_number)}" loading="lazy">`;
+    return `<img src="${esc(image)}" alt="غلاف العدد ${esc(x.issue_number)}" loading="lazy">`;
   }
 
-  return `<span>Ø§Ù„Ø¹Ø¯Ø¯ ${esc(x.issue_number)}</span>`;
+  return `<span>العدد ${esc(x.issue_number)}</span>`;
 }
 
 
@@ -198,8 +198,8 @@ function renderIssues(items) {
 
     if (nums.length) {
       range.textContent =
-        'Ù…Ù† Ø§Ù„Ø¹Ø¯Ø¯ ' + Math.min(...nums) +
-        ' Ø¥Ù„Ù‰ Ø§Ù„Ø¹Ø¯Ø¯ ' + Math.max(...nums);
+        'من العدد ' + Math.min(...nums) +
+        ' إلى العدد ' + Math.max(...nums);
     }
   }
 
@@ -214,23 +214,23 @@ function renderIssues(items) {
 
         <div class="issue-body">
           <strong>
-            Ø§Ù„Ø¹Ø¯Ø¯ ${esc(x.issue_number)}
+            العدد ${esc(x.issue_number)}
             ${year ? `<span class="issue-year">(${esc(year)})</span>` : ''}
           </strong>
 
           <p>
-            ${esc(x.title || 'Ø¶Ø¯ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§ !ØŸ')}
-            ${x.publication_date ? ' â€” ' + esc(x.publication_date) : ''}
+            ${esc(x.title || 'ضد السينما !؟')}
+            ${x.publication_date ? ' — ' + esc(x.publication_date) : ''}
           </p>
 
           <div class="issue-links">
             ${
               x.pdf_url
-                ? `<a class="mini red" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">ØªØµÙØ­ PDF</a>`
-                : `<span class="mini">PDF Ù‚Ø±ÙŠØ¨Ø§Ù‹</span>`
+                ? `<a class="mini red" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح PDF</a>`
+                : `<span class="mini">PDF قريباً</span>`
             }
 
-            <a class="mini" href="#articles">Ø§Ù„Ù…Ù‚Ø§Ù„Ø§Øª</a>
+            <a class="mini" href="#articles">المقالات</a>
           </div>
         </div>
       </article>
@@ -250,8 +250,8 @@ function renderCurrent(x) {
   if (!x) {
     target.innerHTML = `
       <div class="empty">
-        Ù„Ù… ÙŠØªÙ… Ø§Ø®ØªÙŠØ§Ø± Ø¹Ø¯Ø¯ Ø§Ù„Ø´Ù‡Ø± Ø¨Ø¹Ø¯.
-        ÙŠÙ…ÙƒÙ†Ùƒ ØªØ­Ø¯ÙŠØ¯Ù‡ Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ….
+        لم يتم اختيار عدد الشهر بعد.
+        يمكنك تحديده من لوحة التحكم.
       </div>
     `;
     return;
@@ -263,27 +263,27 @@ function renderCurrent(x) {
     <div class="current-cover">
       ${
         image
-          ? `<img src="${esc(image)}" alt="ØºÙ„Ø§Ù Ø§Ù„Ø¹Ø¯Ø¯" loading="lazy">`
-          : `<div class="placeholder-cover">Ø§Ù„Ø¹Ø¯Ø¯ ${esc(x.issue_number)}</div>`
+          ? `<img src="${esc(image)}" alt="غلاف العدد" loading="lazy">`
+          : `<div class="placeholder-cover">العدد ${esc(x.issue_number)}</div>`
       }
     </div>
 
     <div class="current-info">
-      <div class="num">Ø§Ù„Ø¹Ø¯Ø¯ ${esc(x.issue_number)}</div>
+      <div class="num">العدد ${esc(x.issue_number)}</div>
 
-      <h3>${esc(x.title || 'Ø¶Ø¯ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§ !ØŸ')}</h3>
+      <h3>${esc(x.title || 'ضد السينما !؟')}</h3>
 
       <p>
         ${x.publication_date
           ? esc(x.publication_date)
-          : 'Ø¹Ø¯Ø¯ Ø¬Ø¯ÙŠØ¯ Ù…Ù† Ø§Ù„Ù…Ø¬Ù„Ø© Ø§Ù„Ù…Ø³ØªÙ‚Ù„Ø© Ù„Ù„Ù†Ù‚Ø¯ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§Ø¦ÙŠ.'}
+          : 'عدد جديد من المجلة المستقلة للنقد السينمائي.'}
       </p>
 
-      <p>ØªØµÙØ­ Ø§Ù„Ø¹Ø¯Ø¯ØŒ ÙˆØ§Ù‚Ø±Ø£ Ù…Ù„ÙØ§ØªÙ†Ø§ ÙˆÙ…Ø±Ø§Ø¬Ø¹Ø§ØªÙ†Ø§ ÙˆØ­ÙˆØ§Ø±Ø§ØªÙ†Ø§ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§Ø¦ÙŠØ©.</p>
+      <p>تصفح العدد، واقرأ ملفاتنا ومراجعاتنا وحواراتنا السينمائية.</p>
 
       ${
         x.pdf_url
-          ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">ØªØµÙØ­ ÙˆØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¹Ø¯Ø¯ PDF</a>`
+          ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح وتحميل العدد PDF</a>`
           : ''
       }
     </div>
@@ -303,14 +303,14 @@ function renderSections(items) {
     ? items
     : fallbackSections.map((name, i) => ({
         name,
-        description: 'Ù‚Ø³Ù… Ù…Ù† Ø£Ù‚Ø³Ø§Ù… Ø§Ù„Ù…Ø¬Ù„Ø©',
+        description: 'قسم من أقسام المجلة',
         sort_order: i
       }));
 
   target.innerHTML = a.map(x => `
     <a class="section-card" href="section.html?slug=${encodeURIComponent(x.name)}">
       <b>${esc(x.name)}</b>
-      <p>${esc(x.description || 'ÙƒØªØ§Ø¨Ø§Øª ÙˆÙ…ØªØ§Ø¨Ø¹Ø§Øª Ù†Ù‚Ø¯ÙŠØ© Ø­ÙˆÙ„ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§.')}</p>
+      <p>${esc(x.description || 'كتابات ومتابعات نقدية حول السينما.')}</p>
     </a>
   `).join('');
 }
@@ -331,11 +331,11 @@ function viewsLabel(n, lang = 'ar') {
     return v + (v === 1 ? ' view' : ' views');
   }
 
-  if (v === 1) return 'Ù‚Ø±Ø§Ø¡Ø© ÙˆØ§Ø­Ø¯Ø©';
-  if (v === 2) return 'Ù‚Ø±Ø§Ø¡ØªØ§Ù†';
-  if (v <= 10) return v + ' Ù‚Ø±Ø§Ø¡Ø§Øª';
+  if (v === 1) return 'قراءة واحدة';
+  if (v === 2) return 'قراءتان';
+  if (v <= 10) return v + ' قراءات';
 
-  return v + ' Ù‚Ø±Ø§Ø¡Ø©';
+  return v + ' قراءة';
 }
 
 function articleCard(x) {
@@ -347,7 +347,7 @@ function articleCard(x) {
       data-article-id="${esc(x.id)}"
       tabindex="0"
       role="button"
-      aria-label="Ù‚Ø±Ø§Ø¡Ø© Ù…Ù‚Ø§Ù„ ${esc(x.title)}"
+      aria-label="قراءة مقال ${esc(x.title)}"
     >
       ${
         image
@@ -356,7 +356,7 @@ function articleCard(x) {
       }
 
       <div class="article-card-content">
-        <div class="cat">${esc(x.category || 'Ù†Ù‚Ø¯ Ø³ÙŠÙ†Ù…Ø§Ø¦ÙŠ')}</div>
+        <div class="cat">${esc(x.category || 'نقد سينمائي')}</div>
 
         <h3>${esc(x.title)}</h3>
 
@@ -390,7 +390,7 @@ function renderArticles(items) {
   if (!items.length) {
     target.innerHTML = `
       <div class="empty">
-        Ø³ØªØ¸Ù‡Ø± Ø§Ù„Ù…Ù‚Ø§Ù„Ø§Øª Ù‡Ù†Ø§ ÙÙˆØ± Ø¥Ø¶Ø§ÙØªÙ‡Ø§ Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ….
+        ستظهر المقالات هنا فور إضافتها من لوحة التحكم.
       </div>
     `;
     return;
@@ -445,7 +445,7 @@ function renderTeam(items) {
           <p>${esc(x.bio || '')}</p>
         </article>
       `).join('')
-    : `<div class="empty">Ø£Ø¶Ù Ø£Ø¹Ø¶Ø§Ø¡ Ù‡ÙŠØ¦Ø© Ø§Ù„ØªØ­Ø±ÙŠØ± Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ….</div>`;
+    : `<div class="empty">أضف أعضاء هيئة التحرير من لوحة التحكم.</div>`;
 }
 
 
@@ -477,7 +477,7 @@ function renderEditors(items) {
           </article>
         `;
       }).join('')
-    : `<div class="empty">Ø£Ø¶Ù Ø§Ù„Ù…Ø­Ø±Ø±ÙŠÙ† Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ….</div>`;
+    : `<div class="empty">أضف المحررين من لوحة التحكم.</div>`;
 }
 
 
@@ -494,8 +494,8 @@ function createArticleReader() {
   reader.innerHTML = `
     <div class="cc-reader-backdrop" data-close-reader></div>
 
-    <article class="cc-reader" role="dialog" aria-modal="true" aria-label="Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ù…Ù‚Ø§Ù„">
-      <button class="cc-reader-close" type="button" aria-label="Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„Ù…Ù‚Ø§Ù„" data-close-reader>Ã—</button>
+    <article class="cc-reader" role="dialog" aria-modal="true" aria-label="قراءة المقال">
+      <button class="cc-reader-close" type="button" aria-label="إغلاق المقال" data-close-reader>×</button>
       <div class="cc-reader-inner" id="ccArticleContent"></div>
     </article>
   `;
@@ -631,9 +631,9 @@ function articleImage(url, alt = '') {
    ARTICLE SHARE
 ========================================================= */
 
+/* رابط المشاركة: صفحة /share/ID/ التي تحتوي وسوم Open Graph */
 function articleLink(id) {
-  return location.origin + location.pathname + location.search +
-    '#article-' + encodeURIComponent(id);
+  return location.origin + '/share/' + encodeURIComponent(id) + '/';
 }
 
 function shareIcon(path) {
@@ -648,7 +648,7 @@ function shareIcon(path) {
 
 function shareBar(article, lang = 'ar') {
   const url = articleLink(article.id);
-  const title = article.title || 'Ø¶Ø¯ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§ !ØŸ';
+  const title = article.title || 'ضد السينما !؟';
   const e = encodeURIComponent;
 
   const labels = lang === 'fr'
@@ -670,12 +670,12 @@ function shareBar(article, lang = 'ar') {
           copy: 'Copy link'
         }
       : {
-          share: 'Ø´Ø§Ø±Ùƒ Ø§Ù„Ù…Ù‚Ø§Ù„',
-          facebook: 'ÙÙŠØ³Ø¨ÙˆÙƒ',
-          whatsapp: 'ÙˆØ§ØªØ³Ø§Ø¨',
-          telegram: 'ØªÙŠÙ„ÙŠØ¬Ø±Ø§Ù…',
-          email: 'Ø§Ù„Ø¨Ø±ÙŠØ¯',
-          copy: 'Ù†Ø³Ø® Ø§Ù„Ø±Ø§Ø¨Ø·'
+          share: 'شارك المقال',
+          facebook: 'فيسبوك',
+          whatsapp: 'واتساب',
+          telegram: 'تيليجرام',
+          email: 'البريد',
+          copy: 'نسخ الرابط'
         };
 
   const targets = [
@@ -755,10 +755,10 @@ function bindShareCopy(article, lang = 'ar') {
   const done = () => {
     if (label) {
       label.textContent = lang === 'fr'
-        ? 'Lien copiÃ©'
+        ? 'Lien copié'
         : lang === 'en'
           ? 'Link copied'
-          : 'ØªÙ… Ù†Ø³Ø® Ø§Ù„Ø±Ø§Ø¨Ø·';
+          : 'تم نسخ الرابط';
     }
 
     button.classList.add('is-done');
@@ -798,12 +798,12 @@ const CC_MEMORY_CACHE = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
 
 const AUTHORS_LATIN_MAP = {
-  [normalizeName('Ø­ÙƒÙŠÙ… Ù…Ø­Ù…Ø¯ÙŠ')]: 'Mohammedi Hakim',
-  [normalizeName('Ù…Ø­Ù…Ø¯ÙŠ Ø­ÙƒÙŠÙ…')]: 'Mohammedi Hakim',
-  [normalizeName('Ø¹Ø¨Ø¯ Ø§Ù„Ø±Ø¤ÙˆÙ Ø¨Ù† Ø£Ø­Ù…Ø¯')]: 'Abdel Raouf Ben Ahmed',
-  [normalizeName('Ø¨Ù† Ø£Ø­Ù…Ø¯ Ø¹Ø¨Ø¯ Ø§Ù„Ø±Ø¤ÙˆÙ')]: 'Abdel Raouf Ben Ahmed',
-  [normalizeName('Ø¹Ø§Ù…Ø± Ø·Ø§Ø±Ù‚')]: 'Amer Tariq',
-  [normalizeName('Ù…Ø­Ù…Ø¯ Ø¨Ù† Ø²ÙŠØ§Ù†')]: 'Mohamed Ben Zayan'
+  [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
+  [normalizeName('محمدي حكيم')]: 'Mohammedi Hakim',
+  [normalizeName('عبد الرؤوف بن أحمد')]: 'Abdel Raouf Ben Ahmed',
+  [normalizeName('بن أحمد عبد الرؤوف')]: 'Abdel Raouf Ben Ahmed',
+  [normalizeName('عامر طارق')]: 'Amer Tariq',
+  [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
 };
 
 function transliterateArabicName(name) {
@@ -819,17 +819,17 @@ function transliterateArabicName(name) {
   if (!/[\u0600-\u06FF]/.test(raw)) return raw;
 
   const digraphs = [
-    ['Ø§Ù„', 'El '], ['ØªØ´', 'Tch'], ['Ø«', 'Th'],
-    ['Ø®', 'Kh'], ['Ø°', 'Dh'], ['Ø´', 'Ch'], ['Øº', 'Gh']
+    ['ال', 'El '], ['تش', 'Tch'], ['ث', 'Th'],
+    ['خ', 'Kh'], ['ذ', 'Dh'], ['ش', 'Ch'], ['غ', 'Gh']
   ];
 
   const singleMap = {
-    'Ø§': 'a', 'Ø£': 'a', 'Ø¥': 'i', 'Ø¢': 'a', 'Ø¡': '',
-    'Ø¨': 'b', 'Øª': 't', 'Ø¬': 'j', 'Ø­': 'h', 'Ø¯': 'd',
-    'Ø±': 'r', 'Ø²': 'z', 'Ø³': 's', 'Øµ': 's', 'Ø¶': 'd',
-    'Ø·': 't', 'Ø¸': 'z', 'Ø¹': '', 'Ù': 'f', 'Ù‚': 'q',
-    'Ùƒ': 'k', 'Ù„': 'l', 'Ù…': 'm', 'Ù†': 'n', 'Ù‡': 'h',
-    'Ùˆ': 'w', 'ÙŠ': 'y', 'Ù‰': 'a', 'Ø©': 'a'
+    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ء': '',
+    'ب': 'b', 'ت': 't', 'ج': 'j', 'ح': 'h', 'د': 'd',
+    'ر': 'r', 'ز': 'z', 'س': 's', 'ص': 's', 'ض': 'd',
+    'ط': 't', 'ظ': 'z', 'ع': '', 'ف': 'f', 'ق': 'q',
+    'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h',
+    'و': 'w', 'ي': 'y', 'ى': 'a', 'ة': 'a'
   };
 
   return raw.split(/\s+/).filter(Boolean).map(word => {
@@ -1138,10 +1138,10 @@ function splitTextForTranslation(text, maxLength = 400) {
 
     const sentenceEnd = Math.max(
       remaining.lastIndexOf('. ', maxLength),
-      remaining.lastIndexOf('ØŸ ', maxLength),
+      remaining.lastIndexOf('؟ ', maxLength),
       remaining.lastIndexOf('! ', maxLength),
-      remaining.lastIndexOf('Ø› ', maxLength),
-      remaining.lastIndexOf('ØŒ ', maxLength),
+      remaining.lastIndexOf('؛ ', maxLength),
+      remaining.lastIndexOf('، ', maxLength),
       remaining.lastIndexOf('\n', maxLength)
     );
 
@@ -1474,9 +1474,9 @@ async function openArticle(id, keepReaderOpen = false) {
     <div class="cc-no-content">
       ${
         lang === 'ar'
-          ? 'Ø¬Ø§Ø±Ù ÙØªØ­ Ø§Ù„Ù…Ù‚Ø§Ù„...'
+          ? 'جارٍ فتح المقال...'
           : lang === 'fr'
-            ? 'Ouverture de lâ€™article...'
+            ? 'Ouverture de l’article...'
             : 'Loading article...'
       }
     </div>
@@ -1496,12 +1496,12 @@ async function openArticle(id, keepReaderOpen = false) {
   const [translatedTitle, translatedCategory] = lang === 'ar'
     ? [
         article.title || '',
-        article.category || 'Ù†Ù‚Ø¯ Ø³ÙŠÙ†Ù…Ø§Ø¦ÙŠ'
+        article.category || 'نقد سينمائي'
       ]
     : await Promise.all([
         translateText(article.title || '', lang),
         translateText(
-          article.category || 'Ù†Ù‚Ø¯ Ø³ÙŠÙ†Ù…Ø§Ø¦ÙŠ',
+          article.category || 'نقد سينمائي',
           lang
         )
       ]);
@@ -1548,7 +1548,7 @@ async function openArticle(id, keepReaderOpen = false) {
       <div class="cc-no-content">
         ${
           lang === 'ar'
-            ? 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù†Øµ Ù„Ù‡Ø°Ø§ Ø§Ù„Ù…Ù‚Ø§Ù„ Ø¨Ø¹Ø¯.'
+            ? 'لا يوجد نص لهذا المقال بعد.'
             : lang === 'fr'
               ? 'Aucun texte disponible pour cet article.'
               : 'No article text is available.'
@@ -1567,13 +1567,13 @@ async function openArticle(id, keepReaderOpen = false) {
 
   const authorPlaceholder = displayAuthor
     ? displayAuthor.slice(0, 1)
-    : (lang === 'ar' ? 'Ùƒ' : 'C');
+    : (lang === 'ar' ? 'ك' : 'C');
 
   const authorLabel = lang === 'fr'
-    ? 'ComitÃ© de rÃ©daction'
+    ? 'Comité de rédaction'
     : lang === 'en'
       ? 'Editorial team'
-      : 'Ù‡ÙŠØ¦Ø© Ø§Ù„ØªØ­Ø±ÙŠØ±';
+      : 'هيئة التحرير';
 
   const dateLabel = article.created_at
     ? formatArticleDate(article.created_at, lang)
@@ -1629,12 +1629,9 @@ async function openArticle(id, keepReaderOpen = false) {
 
   const hash = '#article-' + encodeURIComponent(article.id);
 
+  /* نحذف ?a=ID من الشريط بعد الفتح فيصبح الرابط نظيفاً */
   if (!keepReaderOpen && location.hash !== hash) {
-    history.replaceState(
-      null,
-      '',
-      location.pathname + location.search + hash
-    );
+    history.replaceState(null, '', location.pathname + hash);
   }
 }
 
@@ -1694,14 +1691,18 @@ function formatArticleDate(value, lang = getCurrentLang()) {
 
 /* =========================================================
    OPEN ARTICLE FROM SHARED LINK
+   يدعم: #article-ID  وكذلك  ?a=ID
 ========================================================= */
 
 function openArticleFromHash() {
   const hash = location.hash || '';
+  let id = '';
 
-  if (!hash.startsWith('#article-')) return;
-
-  let id = hash.slice(9);
+  if (hash.startsWith('#article-')) {
+    id = hash.slice(9);
+  } else {
+    id = new URLSearchParams(location.search).get('a') || '';
+  }
 
   try {
     id = decodeURIComponent(id);
@@ -1765,7 +1766,7 @@ async function renderArchivePage(mode) {
     const eyebrow = $('#pageEyebrow');
 
     if (eyebrow) {
-      eyebrow.textContent = 'Ù‚Ø³Ù…';
+      eyebrow.textContent = 'قسم';
     }
 
   } else {
@@ -1773,7 +1774,7 @@ async function renderArchivePage(mode) {
       x => normalizeName(x.author) === wanted
     );
 
-    const cleanAuthor = key || 'ÙƒØ§ØªØ¨';
+    const cleanAuthor = key || 'كاتب';
     titleTarget.textContent = cleanAuthor;
     titleTarget.setAttribute('data-author-name', '1');
     titleTarget.setAttribute('data-ar-name', cleanAuthor);
@@ -1785,11 +1786,11 @@ async function renderArchivePage(mode) {
     const eyebrow = $('#pageEyebrow');
 
     if (eyebrow) {
-      eyebrow.textContent = 'ÙƒØ§ØªØ¨';
+      eyebrow.textContent = 'كاتب';
     }
   }
 
-  document.title = titleTarget.textContent + ' | Ø¶Ø¯ Ø§Ù„Ø³ÙŠÙ†Ù…Ø§';
+  document.title = titleTarget.textContent + ' | ضد السينما';
 
   createArticleReader();
   applySiteSettings(settings);
@@ -1799,7 +1800,7 @@ async function renderArchivePage(mode) {
 
     target.innerHTML = `
       <div class="empty">
-        Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù‚Ø§Ù„Ø§Øª Ù…Ù†Ø´ÙˆØ±Ø© Ù‡Ù†Ø§ Ø¨Ø¹Ø¯.
+        لا توجد مقالات منشورة هنا بعد.
       </div>
     `;
 
