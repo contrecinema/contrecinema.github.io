@@ -931,6 +931,61 @@ function writeCachedTranslation(lang, text, translated) {
   try {
     localStorage.setItem(key, translated);
   } catch (e) {}
+  queueShare(lang, text, translated);
+}
+
+/* ---------- ترجمات مشتركة بين كل الزوار (جدول translations) ---------- */
+const CC_SHARED_LOADED = {};
+const CC_SHARE_QUEUE = [];
+let CC_SHARE_TIMER = null;
+
+function loadSharedTranslations(lang) {
+  if (lang === 'ar') return Promise.resolve();
+  if (CC_SHARED_LOADED[lang]) return CC_SHARED_LOADED[lang];
+  CC_SHARED_LOADED[lang] = (async () => {
+    try {
+      const req = db.from('translations')
+        .select('source,text')
+        .eq('lang', lang)
+        .range(0, 999);
+      const r = await Promise.race([
+        req,
+        new Promise(res => setTimeout(() => res(null), 4000))
+      ]);
+      if (!r || r.error || !Array.isArray(r.data)) return;
+      for (const row of r.data) {
+        if (row.source && row.text && isValidTranslation(row.source, row.text)) {
+          CC_MEMORY_CACHE.set(cacheKeyFor(lang, row.source), row.text);
+        }
+      }
+    } catch (e) {}
+  })();
+  return CC_SHARED_LOADED[lang];
+}
+
+function queueShare(lang, text, tr) {
+  const src = String(text ?? '').trim();
+  const out = String(tr ?? '').trim();
+  if (lang === 'ar' || !src || !out) return;
+  if (src.length > 600 || out.length > 1200) return;
+  if (!/[\u0600-\u06FF]/.test(src)) return;
+  CC_SHARE_QUEUE.push({ lang, source: src, text: out });
+  clearTimeout(CC_SHARE_TIMER);
+  CC_SHARE_TIMER = setTimeout(flushShare, 1500);
+}
+
+async function flushShare() {
+  const rows = CC_SHARE_QUEUE.splice(0, 100);
+  if (!rows.length) return;
+  try {
+    await db.from('translations').upsert(rows, {
+      onConflict: 'lang,source',
+      ignoreDuplicates: true
+    });
+  } catch (e) {}
+  if (CC_SHARE_QUEUE.length) {
+    CC_SHARE_TIMER = setTimeout(flushShare, 500);
+  }
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1321,6 +1376,9 @@ async function applyLanguageToDom(lang) {
   }
 
   const alive = () => runId === CC_TRANSLATION_RUN && getCurrentLang() === lang;
+
+  if (lang !== 'ar') await loadSharedTranslations(lang);
+  if (!alive()) return;
 
   const nodes = collectTranslatableTextNodes();
 
@@ -1797,6 +1855,7 @@ function applySiteSettings(settings) {
 async function main() {
   initLanguageSwitcher();
   const currentLang = getCurrentLang();
+  if (currentLang !== 'ar') loadSharedTranslations(currentLang);
   const path = location.pathname;
   const qs = new URLSearchParams(location.search);
   const isArchive = !!$('#pageArticles');
