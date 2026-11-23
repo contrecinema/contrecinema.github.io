@@ -73,17 +73,17 @@ html[data-theme="dark"] .hero-note{
 html[data-theme="dark"] .theme-toggle .i-sun{opacity:0;transform:rotate(70deg) scale(.85)}
 html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) scale(1)}
 
-/* ============ تنسيق الفيديو السينمائي ============ */
+/* ============ تنسيق الفيديو السينمائي واستدارة فنية ============ */
 .hero-video-container {
   width: min(1180px, calc(100% - 40px));
-  margin: 15px auto 0 auto;
+  margin: 18px auto 14px auto;
   height: 240px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 18px;
   overflow: hidden;
   position: relative;
   background-color: #000;
   border: 1px solid var(--line);
-  border-bottom: none;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
 }
 
 .hero-video {
@@ -91,16 +91,17 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 18px;
 }
 
 .hero-box-wrapper {
   width: min(1180px, calc(100% - 40px));
-  margin: 0 auto 20px auto;
+  margin: 0 auto 24px auto;
   background-color: var(--surface-2);
   border: 1px solid var(--line);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  padding: 5px 0 20px 0;
+  border-radius: 18px;
+  padding: 8px 0 22px 0;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
 }
 
 .hero-box-wrapper .hero {
@@ -200,8 +201,9 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 .hero-text-panel {
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-top: none;
+  border-radius: 18px;
   padding: 28px 34px 24px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
 }
 
 .hero-text-panel .kicker {
@@ -222,7 +224,22 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 }
 
 @media (max-width: 560px) {
+  .hero-video-container {
+    width: min(100% - 24px, 1180px);
+    border-radius: 16px;
+  }
+
+  .hero-video {
+    border-radius: 16px;
+  }
+
+  .hero-box-wrapper {
+    width: min(100% - 24px, 1180px);
+    border-radius: 16px;
+  }
+
   .hero-text-panel {
+    border-radius: 16px;
     padding: 20px 18px 18px;
   }
 
