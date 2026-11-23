@@ -366,43 +366,52 @@ html[dir="ltr"] .article-card small {
 body {
   top: 0 !important;
 }
-/* ===== الشريط العلوي ===== */
+
+/* ===== الشريط العلوي (اللون المتوسط #8C6B4F) ===== */
 header,
 .site-header,
 .topbar {
-  background: #141210 !important;
-  color: #F5F2ED !important;
-  border-bottom: 1px solid #2A2622 !important;
+  background: #8C6B4F !important;
+  color: #F5EFE6 !important;
+  border-bottom: 1px solid #6F533C !important;
 }
 
 header a,
 header .brand,
 .site-header a,
 .topbar a {
-  color: #F5F2ED !important;
+  color: #F5EFE6 !important;
 }
 
 header #languageSelect,
 .site-header #languageSelect,
 .topbar #languageSelect {
-  background: #1F1B18 !important;
-  color: #F5F2ED !important;
-  border-color: #E8400C !important;
+  background: #6F533C !important;
+  color: #F5EFE6 !important;
+  border-color: #F5EFE6 !important;
 }
 
 header #themeToggle,
 .site-header #themeToggle,
 .topbar #themeToggle {
   background: transparent !important;
-  color: #F5F2ED !important;
-  border-color: #F5F2ED !important;
+  color: #F5EFE6 !important;
+  border-color: #F5EFE6 !important;
 }
 
 /* ===== قائمة الهاتف ===== */
-.hamb{color:#F5F2ED}
-@media(max-width:900px){
-  nav{background:#141210 !important;border-bottom:1px solid #2A2622}
-  nav a{color:#F5F2ED !important}
+.hamb {
+  color: #F5EFE6 !important;
+}
+
+@media (max-width: 900px) {
+  nav {
+    background: #8C6B4F !important;
+    border-bottom: 1px solid #6F533C !important;
+  }
+  nav a {
+    color: #F5EFE6 !important;
+  }
 }
 
 /* ===== كل قسم في صفحة مستقلة ===== */
