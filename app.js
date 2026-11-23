@@ -997,13 +997,19 @@ async function requestTranslation(text, targetLang, retries = 2) {
 /* ---------- BATCH: عدة نصوص في طلب واحد (بدون تعديل الدالة) ---------- */
 const CC_BATCH_SEP = '\n@@@\n';
 
+let CC_BATCH_BROKEN = false;
+
 async function requestBatch(texts, lang) {
   if (!texts.length) return [];
+  if (CC_BATCH_BROKEN && texts.length > 1) return null;
   const joined = texts.join(CC_BATCH_SEP);
   const out = await requestTranslationOnce(joined, lang, 25000);
   if (!out) return null;
   const parts = out.split(/\s*@@@\s*/).map(s => s.trim());
-  return parts.length === texts.length ? parts : null;
+  if (parts.length === texts.length) return parts;
+  // وصل رد لكن الفاصل لم يُحفظ: نوقف الدفعات حتى لا نضاعف الطلبات
+  if (texts.length > 1) CC_BATCH_BROKEN = true;
+  return null;
 }
 
 function makeBatches(unique, firstSize = 8, size = 10, maxChars = 1200) {
@@ -1036,7 +1042,7 @@ async function translateUnique(unique, lang, alive, apply) {
 
   async function doBatch(batch) {
     let remaining = batch;
-    for (let a = 0; a < 2 && remaining.length; a++) {
+    for (let a = 0; a < 2 && remaining.length && !(CC_BATCH_BROKEN && remaining.length > 1); a++) {
       if (!alive()) return;
       const out = await requestBatch(remaining, lang);
       if (out) {
@@ -1316,11 +1322,6 @@ async function applyLanguageToDom(lang) {
 
   const alive = () => runId === CC_TRANSLATION_RUN && getCurrentLang() === lang;
 
-  if (lang !== 'ar') {
-    await translateCardsFirst(lang, runId);
-    if (!alive()) return;
-  }
-
   const nodes = collectTranslatableTextNodes();
 
   if (lang === 'ar') {
@@ -1373,6 +1374,17 @@ async function applyLanguageToDom(lang) {
     pending.push({ node, source, clean });
   }
 
+  if (!pending.length) return;
+
+  // عناوين البطاقات أولاً (بعد أن ظهر القاموس والكاش فوراً)
+  await translateCardsFirst(lang, runId);
+  if (!alive()) return;
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const it = pending[i];
+    if (!it.node.isConnected || !/[\u0600-\u06FF]/.test(it.node.textContent || '')) {
+      pending.splice(i, 1);
+    }
+  }
   if (!pending.length) return;
 
   const groups = new Map();
