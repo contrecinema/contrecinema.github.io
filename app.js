@@ -967,7 +967,7 @@ function isValidTranslation(original, translated) {
   if (!source || !result) return false;
   if (result === source && /[\u0600-\u06FF]/.test(source)) return false;
 
-  if (/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(result)) {
+  if (/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY|MYMEMORY WARNING/i.test(result)) {
     return false;
   }
 
@@ -1014,13 +1014,39 @@ function writeCachedTranslation(lang, text, translated) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// طلب مع مهلة زمنية: لا ننتظر خدمة بطيئة أكثر من بضع ثوانٍ
+async function fetchT(url, options = {}, ms = 7000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// إذا فشلت خدمة ترجمة نتجاوزها دقيقتين حتى لا تُبطئ بقية الفقرات
+const CC_PROVIDERS = ['google', 'mymemory', 'lingva'];
+const CC_PROVIDERS_DOWN = {};
+
+const providerOk = name => (CC_PROVIDERS_DOWN[name] || 0) < Date.now();
+const providerFailed = name => {
+  CC_PROVIDERS_DOWN[name] = Date.now() + 120000;
+};
+
 async function requestTranslationOnce(text, targetLang) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
 
+  // إن تعطلت كل الخدمات نعيد المحاولة معها جميعًا
+  if (!CC_PROVIDERS.some(providerOk)) {
+    CC_PROVIDERS.forEach(name => delete CC_PROVIDERS_DOWN[name]);
+  }
+
   if (window.CC_AI_TRANSLATE_ENDPOINT) {
     try {
-      const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
+      const res = await fetchT(window.CC_AI_TRANSLATE_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -1031,7 +1057,7 @@ async function requestTranslationOnce(text, targetLang) {
           targetLang,
           domain: 'cinema criticism magazine'
         })
-      });
+      }, 15000);
 
       if (res.ok) {
         const data = await res.json();
@@ -1051,74 +1077,97 @@ async function requestTranslationOnce(text, targetLang) {
   }
 
   // 1. Google Translate
-  try {
-    const url =
-      'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
-      encodeURIComponent(targetLang) +
-      '&dt=t&q=' +
-      encodeURIComponent(clean);
+  if (providerOk('google')) {
+    try {
+      const url =
+        'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
+        encodeURIComponent(targetLang) +
+        '&dt=t&q=' +
+        encodeURIComponent(clean);
 
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      const translated = Array.isArray(data) && Array.isArray(data[0])
-        ? data[0]
-            .map(part => Array.isArray(part) ? part[0] : '')
-            .join('')
-            .trim()
-        : '';
+      const res = await fetchT(url);
 
-      if (isValidTranslation(clean, translated)) {
-        return translated;
+      if (res.ok) {
+        const data = await res.json();
+        const translated = Array.isArray(data) && Array.isArray(data[0])
+          ? data[0]
+              .map(part => Array.isArray(part) ? part[0] : '')
+              .join('')
+              .trim()
+          : '';
+
+        if (isValidTranslation(clean, translated)) {
+          return translated;
+        }
+      } else {
+        providerFailed('google');
       }
+    } catch (e) {
+      providerFailed('google');
     }
-  } catch (e) {}
+  }
 
   // 2. MyMemory
-  try {
-    const mmUrl =
-      'https://api.mymemory.translated.net/get?q=' +
-      encodeURIComponent(clean) +
-      '&langpair=ar|' +
-      encodeURIComponent(targetLang);
+  if (providerOk('mymemory')) {
+    try {
+      const mmUrl =
+        'https://api.mymemory.translated.net/get?q=' +
+        encodeURIComponent(clean) +
+        '&langpair=ar|' +
+        encodeURIComponent(targetLang);
 
-    const mmRes = await fetch(mmUrl);
-    if (mmRes.ok) {
-      const mmData = await mmRes.json();
-      const mmText = String(mmData?.responseData?.translatedText || '').trim();
-      if (isValidTranslation(clean, mmText)) {
-        return mmText;
+      const mmRes = await fetchT(mmUrl);
+
+      if (mmRes.ok) {
+        const mmData = await mmRes.json();
+        const mmText = String(mmData?.responseData?.translatedText || '').trim();
+
+        if (isValidTranslation(clean, mmText)) {
+          return mmText;
+        }
+      } else {
+        providerFailed('mymemory');
       }
+    } catch (e) {
+      providerFailed('mymemory');
     }
-  } catch (e) {}
+  }
 
-  // 3. Lingva Translate fallback
-  try {
-    const lvUrl =
-      'https://lingva.ml/api/v1/ar/' +
-      encodeURIComponent(targetLang) +
-      '/' +
-      encodeURIComponent(clean);
+  // 3. Lingva Translate
+  if (providerOk('lingva')) {
+    try {
+      const lvUrl =
+        'https://lingva.ml/api/v1/ar/' +
+        encodeURIComponent(targetLang) +
+        '/' +
+        encodeURIComponent(clean);
 
-    const lvRes = await fetch(lvUrl);
-    if (lvRes.ok) {
-      const lvData = await lvRes.json();
-      const lvText = String(lvData?.translation || '').trim();
-      if (isValidTranslation(clean, lvText)) {
-        return lvText;
+      const lvRes = await fetchT(lvUrl);
+
+      if (lvRes.ok) {
+        const lvData = await lvRes.json();
+        const lvText = String(lvData?.translation || '').trim();
+
+        if (isValidTranslation(clean, lvText)) {
+          return lvText;
+        }
+      } else {
+        providerFailed('lingva');
       }
+    } catch (e) {
+      providerFailed('lingva');
     }
-  } catch (e) {}
+  }
 
   return '';
 }
 
-async function requestTranslation(text, targetLang, retries = 2) {
+async function requestTranslation(text, targetLang, retries = 1) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const out = await requestTranslationOnce(text, targetLang);
     if (out) return out;
     if (attempt < retries) {
-      await sleep(300 * (attempt + 1));
+      await sleep(300);
     }
   }
   return '';
@@ -1205,72 +1254,124 @@ function splitTextForTranslation(text, maxLength = 400) {
 
 
 /* =========================================================
-   WHOLE ARTICLE TRANSLATION
+   ARTICLE TRANSLATION (فقرة فقرة، بالتوازي)
 ========================================================= */
 
-async function translateWholeArticle(content, lang) {
-  const original = String(content ?? '');
+async function translateLine(line, lang) {
+  const text = String(line ?? '');
+  const m = text.match(/^(##[ \t]+|>[ \t]?)/);
+  const prefix = m ? m[0] : '';
+  const body = text.slice(prefix.length);
 
-  if (!original.trim() || lang === 'ar') {
-    return original;
-  }
+  if (!body.trim()) return text;
 
-  const cached = readCachedTranslation(lang, original);
-  if (cached && isValidTranslation(original, cached)) {
-    return cached;
-  }
+  const chunks = splitTextForTranslation(body, 400);
+  const out = [];
+  let any = false;
 
-  const chunks = splitTextForTranslation(original, 400);
-  if (!chunks.length) return original;
+  for (const raw of chunks) {
+    const chunk = raw.trim();
+    if (!chunk) continue;
 
-  const translatedChunks = [];
-  let anyTranslated = false;
+    const cached = readCachedTranslation(lang, chunk);
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-
-    if (!chunk.trim()) {
-      translatedChunks.push(chunk);
+    if (cached && isValidTranslation(chunk, cached)) {
+      out.push(cached.trim());
+      any = true;
       continue;
     }
 
-    const chunkCached = readCachedTranslation(lang, chunk);
-    if (chunkCached && isValidTranslation(chunk, chunkCached)) {
-      translatedChunks.push(chunkCached);
-      anyTranslated = true;
-      continue;
-    }
-
-    let translated = await requestTranslation(chunk, lang);
-    if (!translated || !isValidTranslation(chunk, translated)) {
-      await sleep(600);
-      translated = await requestTranslation(chunk, lang, 1);
-    }
+    const translated = await requestTranslation(chunk, lang);
 
     if (translated && isValidTranslation(chunk, translated)) {
       writeCachedTranslation(lang, chunk, translated);
-      translatedChunks.push(translated);
-      anyTranslated = true;
+      out.push(translated.trim());
+      any = true;
     } else {
-      translatedChunks.push(chunk);
-    }
-
-    if (i < chunks.length - 1) {
-      await sleep(180);
+      out.push(chunk);
     }
   }
 
-  if (!anyTranslated) {
-    return original;
+  if (!any) return text;
+
+  return prefix + out.join(' ');
+}
+
+async function translateParagraph(paragraph, lang) {
+  const original = String(paragraph ?? '');
+
+  if (!original.trim() || lang === 'ar') return original;
+
+  const lines = original.replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+
+  for (const line of lines) {
+    out.push(await translateLine(line, lang));
   }
 
-  const result = translatedChunks.join('');
-  if (!isValidTranslation(original, result)) {
-    return original;
+  return out.join('\n');
+}
+
+async function translateArticleInPlace(article, paragraphs, lang, requestId) {
+  const stale = () =>
+    requestId !== CC_OPEN_ARTICLE_REQUEST ||
+    getCurrentLang() !== lang;
+
+  const host = document.getElementById('ccArticleContent');
+  let status = null;
+
+  if (host) {
+    status = document.createElement('div');
+    status.className = 'cc-trans-status';
+    status.style.cssText =
+      'margin:0 0 18px;font-size:13px;color:var(--reader-muted)';
+    status.textContent = lang === 'fr'
+      ? 'Traduction en cours…'
+      : 'Translating…';
+
+    host.insertBefore(status, host.firstChild);
   }
 
-  writeCachedTranslation(lang, original, result);
-  return result;
+  try {
+    // العنوان والتصنيف أولًا
+    translateText(article.title || '', lang).then(t => {
+      const el = document.querySelector('#ccArticleContent .cc-article-title');
+      if (el && !stale()) el.textContent = t;
+    });
+
+    translateText(article.category || 'نقد سينمائي', lang).then(t => {
+      const el = document.querySelector('#ccArticleContent .cc-article-category');
+      if (el && !stale()) el.textContent = t;
+    });
+
+    const nodes = Array.from(
+      document.querySelectorAll('#ccArticleContent .cc-article-body p.cc-p')
+    );
+
+    let next = 0;
+
+    const workers = Array.from({ length: 4 }, async () => {
+      while (next < nodes.length) {
+        if (stale()) return;
+
+        const i = next++;
+        const node = nodes[i];
+        const source = paragraphs[i];
+
+        if (!node || source === undefined) continue;
+
+        const translated = await translateParagraph(source, lang);
+
+        if (stale()) return;
+
+        node.innerHTML = formatArticleText(translated);
+      }
+    });
+
+    await Promise.all(workers);
+  } finally {
+    if (status) status.remove();
+  }
 }
 
 
@@ -1379,7 +1480,7 @@ async function applyLanguageToDom(lang) {
   });
 
   let index = 0;
-  const concurrency = 3;
+  const concurrency = 5;
 
   async function worker() {
     while (index < batch.length) {
@@ -1518,31 +1619,11 @@ async function openArticle(id, keepReaderOpen = false) {
     </div>
   `;
 
-  let articleContent = String(article.content || '');
+  // نعرض النص الأصلي فورًا، ثم تُستبدل الفقرات بترجمتها تباعًا
+  const articleContent = String(article.content || '');
 
-  if (lang !== 'ar' && articleContent.trim()) {
-    articleContent = await translateWholeArticle(
-      articleContent,
-      lang
-    );
-  }
-
-  if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
-
-  const [translatedTitle, translatedCategory] = lang === 'ar'
-    ? [
-        article.title || '',
-        article.category || 'نقد سينمائي'
-      ]
-    : await Promise.all([
-        translateText(article.title || '', lang),
-        translateText(
-          article.category || 'نقد سينمائي',
-          lang
-        )
-      ]);
-
-  if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
+  const translatedTitle = article.title || '';
+  const translatedCategory = article.category || 'نقد سينمائي';
 
   const paragraphs = articleParagraphs(articleContent);
 
@@ -1667,6 +1748,10 @@ async function openArticle(id, keepReaderOpen = false) {
 
   if (!keepReaderOpen && location.hash !== hash) {
     history.replaceState(null, '', location.pathname + hash);
+  }
+
+  if (lang !== 'ar') {
+    translateArticleInPlace(article, paragraphs, lang, requestId);
   }
 }
 
