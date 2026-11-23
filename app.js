@@ -991,13 +991,46 @@ async function flushShare() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
+const CC_BUILD = 'build-14';
+const CC_DEBUG_ON = /[?&]trdebug/.test(location.search);
+const CC_DEBUG_LINES = [];
+function ccDbg(msg) {
+  if (!CC_DEBUG_ON) return;
+  CC_DEBUG_LINES.unshift(new Date().toTimeString().slice(0, 8) + ' ' + msg);
+  CC_DEBUG_LINES.length = Math.min(CC_DEBUG_LINES.length, 14);
+  let box = document.getElementById('ccDebugBox');
+  if (!box) {
+    box = document.createElement('pre');
+    box.id = 'ccDebugBox';
+    box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;margin:0;padding:8px;max-height:45vh;overflow:auto;background:#000;color:#0f0;font:11px/1.4 monospace;direction:ltr;text-align:left;white-space:pre-wrap';
+    document.body.appendChild(box);
+  }
+  box.textContent = CC_BUILD + ' lang=' + getCurrentLang() + '\n' + CC_DEBUG_LINES.join('\n');
+}
+
+let CC_COOLDOWN_UNTIL = 0;
+let CC_FAILS = 0;
+function ccFail(ms) {
+  CC_FAILS++;
+  if (ms || CC_FAILS >= 6) {
+    CC_COOLDOWN_UNTIL = Date.now() + (ms || 45000);
+    CC_FAILS = 0;
+  }
+}
+
 async function requestTranslationOnce(text, targetLang, timeoutMs = 0) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
+  if (Date.now() < CC_COOLDOWN_UNTIL) {
+    ccDbg('COOLDOWN ' + Math.ceil((CC_COOLDOWN_UNTIL - Date.now()) / 1000) + 's');
+    return '';
+  }
   if (!timeoutMs) timeoutMs = Math.max(15000, 8000 + clean.length * 25);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const t0 = Date.now();
+  const tag = clean.length + 'ch "' + clean.slice(0, 14) + '"';
 
   try {
     const res = await fetch(CC_TRANSLATE_ENDPOINT, {
@@ -1013,11 +1046,22 @@ async function requestTranslationOnce(text, targetLang, timeoutMs = 0) {
       signal: controller.signal
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) return '';
+    const ms = Date.now() - t0;
+    if (!res.ok) {
+      ccFail(res.status === 429 ? 60000 : 0);
+      ccDbg('HTTP ' + res.status + ' ' + ms + 'ms ' + tag + ' ' + JSON.stringify(data).slice(0, 120));
+      return '';
+    }
 
     const translated = String(data?.translatedText || '').trim();
-    return isValidTranslation(clean, translated) ? translated : '';
+    const ok = isValidTranslation(clean, translated);
+    ccDbg((ok ? 'OK ' : 'BAD ') + res.status + ' ' + ms + 'ms ' + tag +
+      (ok ? '' : ' -> ' + JSON.stringify(data).slice(0, 120)));
+    if (ok) CC_FAILS = 0; else ccFail(0);
+    return ok ? translated : '';
   } catch (error) {
+    ccFail(0);
+    ccDbg('ERR ' + (error && error.name) + ' ' + (Date.now() - t0) + 'ms ' + tag);
     return '';
   } finally {
     clearTimeout(timer);
@@ -1096,12 +1140,12 @@ async function translateUnique(unique, lang, alive, apply) {
   if (!unique.length) return;
   let idx = 0;
   const workers = Array.from(
-    { length: Math.min(5, unique.length) },
+    { length: Math.min(3, unique.length) },
     async () => {
       while (idx < unique.length) {
         if (!alive()) return;
         const src = unique[idx++];
-        const tr = await requestTranslation(src, lang, 2);
+        const tr = await requestTranslation(src, lang, 1);
         if (isValidTranslation(src, tr)) {
           writeCachedTranslation(lang, src, tr);
           apply(src, tr);
