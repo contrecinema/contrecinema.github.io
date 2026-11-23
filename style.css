@@ -76,7 +76,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 /* ============ تنسيق الفيديو السينمائي واستدارة فنية ============ */
 .hero-video-container {
   width: min(1180px, calc(100% - 40px));
-  margin: 10px auto 2px auto;
+  margin: 10px auto 4px auto;
   height: 240px;
   border-radius: 18px;
   overflow: hidden;
@@ -96,7 +96,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 
 .hero-box-wrapper {
   width: min(1180px, calc(100% - 40px));
-  margin: 0 auto 14px auto;
+  margin: 0 auto 12px auto;
   background-color: transparent;
   border: none;
   border-radius: 18px;
@@ -240,7 +240,7 @@ html[data-theme="dark"] .hero-text-panel {
 @media (max-width: 560px) {
   .hero-video-container {
     width: min(100% - 24px, 1180px);
-    margin: 8px auto 2px auto;
+    margin: 8px auto 3px auto;
     border-radius: 16px;
   }
 
@@ -250,7 +250,7 @@ html[data-theme="dark"] .hero-text-panel {
 
   .hero-box-wrapper {
     width: min(100% - 24px, 1180px);
-    margin: 0 auto 14px auto;
+    margin: 0 auto 12px auto;
     border-radius: 16px;
     padding: 0;
   }
