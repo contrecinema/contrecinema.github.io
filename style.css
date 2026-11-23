@@ -397,3 +397,21 @@ header #themeToggle,
   color: #F5F2ED !important;
   border-color: #F5F2ED !important;
 }
+/* ===== كل قسم في صفحة مستقلة ===== */
+html:not([data-view]) #sections,
+html:not([data-view]) #articles,
+html:not([data-view]) #team,
+html:not([data-view]) #editors,
+html:not([data-view]) #about,
+html:not([data-view]) #contact,
+html[data-view]:not([data-view="sections"]) #sections,
+html[data-view]:not([data-view="articles"]) #articles,
+html[data-view]:not([data-view="team"]) #team,
+html[data-view]:not([data-view="editors"]) #editors,
+html[data-view]:not([data-view="about"]) #about,
+html[data-view]:not([data-view="contact"]) #contact,
+html[data-view]:not([data-view="home"]) #home,
+html[data-view]:not([data-view="home"]) #issues,
+html[data-view]:not([data-view="home"]) [data-home-only] {
+  display: none !important;
+}
