@@ -711,6 +711,10 @@ const AUTHORS_LATIN_MAP = {
 const STATIC_UI_TRANSLATIONS = {
   fr: {
     'من نحن': 'Qui sommes-nous',
+    'الأقلام المنتظمة': 'Plumes régulières',
+    'من يكتب المجلة': 'Qui écrit la revue',
+    'المجلة': 'La revue',
+    'مدير مسؤول النشر': 'Directeur de la publication',
     'راسلنا': 'Nous écrire',
     'نقرأ الفيلم، ونفكك الصورة': 'Nous lisons le film et déconstruisons l’image',
     'ها نحن في العدد الحادي عشر، والحلم الجميل مستمر؛ نقف اليوم على أعتاب إتمام عام من هذه التجربة المستقلة التي تُدار بصفر دينار. لقد تمكّنا من جمع أهم الأقلام في النقد العربي، وفتحنا الباب أمام أقلام شابة بدأت تترك انطباعًا واعدًا، وتؤكد أنها تمثّل مستقبل الكتابة النقدية. نحن ملزمون بعهد أخلاقيّ، من خلال المجلة وموقعها الإلكتروني بمواصلة تقديم مادة مميزة وثرية لقارئنا، الذي نثق بأنه أصبح ينتظرنا على رأس كل شهر... وإنّا لقادمون إليه.': 'Nous voici au onzième numéro, et le beau rêve continue : nous sommes aujourd’hui au seuil d’une année complète de cette aventure indépendante, menée avec zéro dinar. Nous avons réussi à réunir les plus belles plumes de la critique arabe, tout en ouvrant la porte à de jeunes plumes qui commencent à laisser une impression prometteuse et confirment qu’elles représentent l’avenir de l’écriture critique. Nous sommes tenus par un engagement moral, à travers la revue et son site, de continuer à offrir un contenu distingué et riche à notre lecteur, qui, nous en sommes sûrs, nous attend désormais au début de chaque mois… et nous venons à lui.',
@@ -744,6 +748,10 @@ const STATIC_UI_TRANSLATIONS = {
   },
   en: {
     'من نحن': 'About Us',
+    'الأقلام المنتظمة': 'Regular Contributors',
+    'من يكتب المجلة': 'Who Writes the Magazine',
+    'المجلة': 'The Magazine',
+    'مدير مسؤول النشر': 'Publishing Director',
     'راسلنا': 'Contact Us',
     'نقرأ الفيلم، ونفكك الصورة': 'We read the film, and deconstruct the image',
     'ها نحن في العدد الحادي عشر، والحلم الجميل مستمر؛ نقف اليوم على أعتاب إتمام عام من هذه التجربة المستقلة التي تُدار بصفر دينار. لقد تمكّنا من جمع أهم الأقلام في النقد العربي، وفتحنا الباب أمام أقلام شابة بدأت تترك انطباعًا واعدًا، وتؤكد أنها تمثّل مستقبل الكتابة النقدية. نحن ملزمون بعهد أخلاقيّ، من خلال المجلة وموقعها الإلكتروني بمواصلة تقديم مادة مميزة وثرية لقارئنا، الذي نثق بأنه أصبح ينتظرنا على رأس كل شهر... وإنّا لقادمون إليه.': 'Here we are at the eleventh issue, and the beautiful dream goes on. Today we stand on the threshold of a full year of this independent venture, run on zero dinars. We have gathered the most important voices in Arabic criticism and opened the door to young writers who are beginning to leave a promising impression and who represent the future of critical writing. We are bound by a moral pledge, through the magazine and its website, to keep offering distinctive and rich material to our readers, who we trust now await us at the start of every month... and we are coming to them.',
@@ -1007,7 +1015,7 @@ async function flushShare() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
-const CC_BUILD = 'build-14';
+const CC_BUILD = 'build-18';
 const CC_DEBUG_ON = /[?&]trdebug/.test(location.search);
 const CC_DEBUG_LINES = [];
 function ccDbg(msg) {
@@ -1026,28 +1034,37 @@ function ccDbg(msg) {
 
 let CC_COOLDOWN_UNTIL = 0;
 let CC_FAILS = 0;
-function ccFail(ms) {
+function ccFail(hard) {
   CC_FAILS++;
-  if (ms || CC_FAILS >= 6) {
-    CC_COOLDOWN_UNTIL = Date.now() + (ms || 45000);
+  if (hard || CC_FAILS >= 3) {
+    // الدالة متعثرة: نتوقف قليلاً بدل إغراقها بالطلبات
+    CC_COOLDOWN_UNTIL = Date.now() + (hard ? 60000 : 20000);
     CC_FAILS = 0;
   }
 }
 
-async function requestTranslationOnce(text, targetLang, timeoutMs = 0) {
-  const clean = String(text ?? '').trim();
-  if (!clean || targetLang === 'ar') return clean;
-  if (Date.now() < CC_COOLDOWN_UNTIL) {
-    ccDbg('COOLDOWN ' + Math.ceil((CC_COOLDOWN_UNTIL - Date.now()) / 1000) + 's');
-    return '';
-  }
-  if (!timeoutMs) timeoutMs = Math.max(15000, 8000 + clean.length * 25);
+/* ---- تنظيم معدل الطلبات: يتكيف تلقائياً مع حدّ Gemini (429) ---- */
+let CC_GAP = 1500;       // أقل فاصل بين طلبين (مللي ثانية)
+let CC_NEXT_SLOT = 0;
+async function ccThrottle() {
+  const now = Date.now();
+  const start = Math.max(now, CC_NEXT_SLOT);
+  CC_NEXT_SLOT = start + CC_GAP;
+  if (start > now) await sleep(start - now);
+}
+function ccRateLimited() {
+  CC_GAP = Math.min(CC_GAP * 2, 9000);
+  CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 12000);
+  ccDbg('429 -> gap=' + CC_GAP + 'ms, pause 12s');
+}
 
+async function callGeminiFunction(clean, targetLang) {
+  await ccThrottle();
+  const timeoutMs = Math.min(30000, 8000 + clean.length * 12);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const t0 = Date.now();
   const tag = clean.length + 'ch "' + clean.slice(0, 14) + '"';
-
   try {
     const res = await fetch(CC_TRANSLATE_ENDPOINT, {
       method: 'POST',
@@ -1055,33 +1072,38 @@ async function requestTranslationOnce(text, targetLang, timeoutMs = 0) {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY
       },
-      body: JSON.stringify({
-        text: clean,
-        targetLang
-      }),
+      body: JSON.stringify({ text: clean, targetLang }),
       signal: controller.signal
     });
     const data = await res.json().catch(() => ({}));
     const ms = Date.now() - t0;
     if (!res.ok) {
-      ccFail(res.status === 429 ? 60000 : 0);
-      ccDbg('HTTP ' + res.status + ' ' + ms + 'ms ' + tag + ' ' + JSON.stringify(data).slice(0, 120));
+      if (res.status === 429) ccRateLimited(); else ccFail(false);
+      ccDbg('GEMINI HTTP ' + res.status + ' ' + ms + 'ms ' + tag + ' ' + JSON.stringify(data).slice(0, 100));
       return '';
     }
-
     const translated = String(data?.translatedText || '').trim();
     const ok = isValidTranslation(clean, translated);
-    ccDbg((ok ? 'OK ' : 'BAD ') + res.status + ' ' + ms + 'ms ' + tag +
-      (ok ? '' : ' -> ' + JSON.stringify(data).slice(0, 120)));
-    if (ok) CC_FAILS = 0; else ccFail(0);
+    if (ok) { CC_FAILS = 0; CC_GAP = Math.max(1200, Math.round(CC_GAP * 0.92)); }
+    ccDbg('GEMINI ' + (ok ? 'OK ' : 'BAD ') + ms + 'ms ' + tag);
     return ok ? translated : '';
   } catch (error) {
-    ccFail(0);
-    ccDbg('ERR ' + (error && error.name) + ' ' + (Date.now() - t0) + 'ms ' + tag);
+    ccFail(false);
+    ccDbg('GEMINI ERR ' + (error && error.name) + ' ' + (Date.now() - t0) + 'ms ' + tag);
     return '';
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function requestTranslationOnce(text, targetLang) {
+  const clean = String(text ?? '').trim();
+  if (!clean || targetLang === 'ar') return clean;
+  if (Date.now() < CC_COOLDOWN_UNTIL) {
+    ccDbg('COOLDOWN ' + Math.ceil((CC_COOLDOWN_UNTIL - Date.now()) / 1000) + 's');
+    return '';
+  }
+  return await callGeminiFunction(clean, targetLang);
 }
 
 async function requestTranslation(text, targetLang, retries = 2) {
@@ -1232,7 +1254,41 @@ function splitTextForTranslation(text, maxLength = 2200) {
   return chunks;
 }
 
-async function translateWholeArticle(content, lang) {
+async function loadSharedArticle(key) {
+  try {
+    const req = db.from('article_translations')
+      .select('content')
+      .eq('key', key)
+      .maybeSingle();
+    const r = await Promise.race([
+      req,
+      new Promise(res => setTimeout(() => res(null), 4000))
+    ]);
+    const c = r && !r.error && r.data && r.data.content;
+    return c ? String(c) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveSharedArticle(key, content) {
+  try {
+    Promise.resolve(
+      db.from('article_translations').upsert(
+        { key, content },
+        { onConflict: 'key', ignoreDuplicates: true }
+      )
+    ).catch(() => {});
+  } catch (e) {}
+}
+
+function keepEdgeSpaces(chunk, tr) {
+  const lead = (chunk.match(/^\s*/) || [''])[0];
+  const trail = (chunk.match(/\s*$/) || [''])[0];
+  return lead + tr + trail;
+}
+
+async function translateWholeArticle(content, lang, articleId = null) {
   const original = String(content ?? '');
   if (!original.trim() || lang === 'ar') {
     return original;
@@ -1243,52 +1299,65 @@ async function translateWholeArticle(content, lang) {
     return cached;
   }
 
-  const chunks = splitTextForTranslation(original, 900);
-  if (!chunks.length) return original;
-
-  const translatedChunks = new Array(chunks.length);
-  let anyTranslated = false;
-  let index = 0;
-  const concurrency = 4;
-
-  async function worker() {
-    while (index < chunks.length) {
-      const i = index++;
-      const chunk = chunks[i];
-      if (!chunk.trim()) {
-        translatedChunks[i] = chunk;
-        continue;
-      }
-
-      const chunkCached = readCachedTranslation(lang, chunk);
-      if (chunkCached && isValidTranslation(chunk, chunkCached)) {
-        translatedChunks[i] = chunkCached;
-        anyTranslated = true;
-        continue;
-      }
-
-      const translated = await requestTranslation(chunk, lang, 2);
-      if (translated && isValidTranslation(chunk, translated)) {
-        writeCachedTranslation(lang, chunk, translated);
-        translatedChunks[i] = translated;
-        anyTranslated = true;
-      } else {
-        translatedChunks[i] = chunk;
-      }
+  const sharedKey = articleId != null
+    ? String(articleId) + '|' + cacheKeyFor(lang, original)
+    : null;
+  if (sharedKey) {
+    const shared = await loadSharedArticle(sharedKey);
+    if (shared && isValidTranslation(original, shared)) {
+      writeCachedTranslation(lang, original, shared);
+      return shared;
     }
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, chunks.length) }, worker)
-  );
+  const chunks = splitTextForTranslation(original, 2000);
+  const out = new Array(chunks.length).fill(undefined);
+  const needsTr = c => c.trim() && /[\u0600-\u06FF]/.test(c);
 
-  if (!anyTranslated) return original;
-
-  const result = translatedChunks.join('');
-  if (!isValidTranslation(original, result)) {
-    return original;
+  async function pass(indices) {
+    let k = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(4, indices.length) }, async () => {
+        while (k < indices.length) {
+          const i = indices[k++];
+          const chunk = chunks[i];
+          if (!needsTr(chunk)) {
+            out[i] = chunk;
+            continue;
+          }
+          const clean = chunk.trim();
+          let tr = readCachedTranslation(lang, clean);
+          if (!(tr && isValidTranslation(clean, tr))) {
+            tr = await requestTranslation(clean, lang, 1);
+            if (tr && isValidTranslation(clean, tr)) {
+              writeCachedTranslation(lang, clean, tr);
+            } else {
+              tr = null;
+            }
+          }
+          out[i] = tr ? keepEdgeSpaces(chunk, tr) : null;
+        }
+      })
+    );
   }
-  writeCachedTranslation(lang, original, result);
+
+  const missing = () =>
+    out.map((v, i) => (v == null ? i : -1)).filter(i => i >= 0);
+
+  await pass(chunks.map((_, i) => i));
+  if (missing().length) {
+    await sleep(800);
+    await pass(missing());
+  }
+
+  const bad = missing();
+  const result = out.map((v, i) => (v == null ? chunks[i] : v)).join('');
+
+  // لا نخزّن إلا الترجمة الكاملة، حتى لا تبقى فقرات عربية دائمة
+  if (!bad.length && isValidTranslation(original, result)) {
+    writeCachedTranslation(lang, original, result);
+    if (sharedKey) saveSharedArticle(sharedKey, result);
+  }
   return result;
 }
 
@@ -1588,7 +1657,7 @@ async function openArticle(id, keepReaderOpen = false) {
         article.category || 'نقد سينمائي'
       ]
     : await Promise.all([
-        rawContent.trim() ? translateWholeArticle(rawContent, lang) : '',
+        rawContent.trim() ? translateWholeArticle(rawContent, lang, article.id) : '',
         translateText(article.title || '', lang, null, 2),
         translateText(article.category || 'نقد سينمائي', lang, null, 2)
       ]);
