@@ -1,3 +1,4 @@
+
 const SUPABASE_URL = 'https://qclqyqjxsnnhlnlhjybo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_zTxQEl6b0KSv1fE9tG202g_Rt4X05YV';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -51,6 +52,32 @@ function normalizeName(value) {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+
+/* =========================================================
+   SECTION CATEGORY MATCHING
+   مطابقة تصنيفات المقالات مع أسماء الأقسام
+========================================================= */
+
+function categoryBelongsToSection(category, sectionName) {
+  const cat = normalizeName(category);
+  const section = normalizeName(sectionName);
+
+  if (!cat || !section) return false;
+
+  if (cat === section) return true;
+
+  const aliases = {
+    'الملف': ['الملف', 'ملف']
+  };
+
+  const names = aliases[section] || [section];
+
+  return names.some(name =>
+    cat.startsWith(name + ' -') ||
+    cat.startsWith(name + ' ')
+  );
 }
 
 
@@ -631,7 +658,6 @@ function articleImage(url, alt = '') {
    ARTICLE SHARE
 ========================================================= */
 
-/* رابط المشاركة: صفحة /share/ID/ التي تحتوي وسوم Open Graph */
 function articleLink(id) {
   return location.origin + '/share/' + encodeURIComponent(id) + '/';
 }
@@ -1629,7 +1655,6 @@ async function openArticle(id, keepReaderOpen = false) {
 
   const hash = '#article-' + encodeURIComponent(article.id);
 
-  /* نحذف ?a=ID من الشريط بعد الفتح فيصبح الرابط نظيفاً */
   if (!keepReaderOpen && location.hash !== hash) {
     history.replaceState(null, '', location.pathname + hash);
   }
@@ -1691,7 +1716,6 @@ function formatArticleDate(value, lang = getCurrentLang()) {
 
 /* =========================================================
    OPEN ARTICLE FROM SHARED LINK
-   يدعم: #article-ID  وكذلك  ?a=ID
 ========================================================= */
 
 function openArticleFromHash() {
@@ -1733,8 +1757,17 @@ async function renderArchivePage(mode) {
       .select('*')
       .eq('id', true)
       .maybeSingle()
-      .then(r => r.data || null)
-      .catch(() => null)
+      .then(r => {
+        if (r.error) {
+          console.error('Supabase settings:', r.error);
+          return null;
+        }
+        return r.data || null;
+      })
+      .catch(e => {
+        console.error('Settings:', e);
+        return null;
+      })
   ]);
 
   const titleTarget = $('#pageTitle');
@@ -1751,8 +1784,11 @@ async function renderArchivePage(mode) {
       s => normalizeName(s.name) === wanted
     );
 
-    list = list.filter(
-      x => normalizeName(x.category) === wanted
+    // التعديل الأساسي:
+    // إظهار المقالات التي يبدأ تصنيفها باسم القسم،
+    // حتى عندما يحتوي التصنيف على اسم العدد.
+    list = list.filter(x =>
+      categoryBelongsToSection(x.category, key)
     );
 
     titleTarget.textContent = match ? match.name : key;
@@ -1972,8 +2008,6 @@ async function main() {
 
 /* =========================================================
    VIEWS
-   الرئيسية تعرض الأعداد فقط، وكل قسم آخر يفتح كصفحة مستقلة
-   (يعمل مع روابط القائمة: #articles #sections #team ...)
 ========================================================= */
 
 const CC_VIEWS = ['sections', 'articles', 'team', 'editors', 'about', 'contact'];
