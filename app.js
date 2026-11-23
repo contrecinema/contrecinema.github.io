@@ -73,7 +73,6 @@ function categoryBelongsToSection(category, sectionName) {
 
   const names = aliases[section] || [section];
 
-  // يقبل: «مراجعات - العدد 11» و«مراجعات-العدد» و«مراجعات: ...» وغيرها
   return names.some(name =>
     cat === name ||
     (
@@ -186,7 +185,6 @@ async function get(table, order = 'created_at', ascending = false) {
     if (r.error) {
       console.error(`Supabase ${table}:`, r.error);
 
-      // محاولة ثانية بدون ترتيب (في حال كان عمود الترتيب غير موجود)
       r = await db.from(table).select('*');
 
       if (r.error) {
@@ -1010,117 +1008,75 @@ function writeCachedTranslation(lang, text, translated) {
 
 /* =========================================================
    TRANSLATION REQUEST
+   Gemini through Supabase Edge Function
 ========================================================= */
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+const CC_TRANSLATE_ENDPOINT =
+  SUPABASE_URL + '/functions/v1/translate';
+
 async function requestTranslationOnce(text, targetLang) {
   const clean = String(text ?? '').trim();
+
   if (!clean || targetLang === 'ar') return clean;
 
-  if (window.CC_AI_TRANSLATE_ENDPOINT) {
-    try {
-      const res = await fetch(window.CC_AI_TRANSLATE_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: clean,
-          sourceLang: 'ar',
-          targetLang,
-          domain: 'cinema criticism magazine'
-        })
-      });
+  try {
+    const res = await fetch(CC_TRANSLATE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        text: clean,
+        targetLang
+      })
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        const out = String(
-          (data && (
-            data.translatedText ||
-            data.text ||
-            data.result
-          )) || ''
-        ).trim();
+    const data = await res.json().catch(() => ({}));
 
-        if (isValidTranslation(clean, out)) {
-          return out;
-        }
-      }
-    } catch (e) {}
+    if (!res.ok) {
+      console.error(
+        'Gemini translation error:',
+        res.status,
+        data
+      );
+      return '';
+    }
+
+    const translated = String(
+      data?.translatedText || ''
+    ).trim();
+
+    if (isValidTranslation(clean, translated)) {
+      return translated;
+    }
+
+    console.error(
+      'Invalid Gemini translation response:',
+      data
+    );
+
+    return '';
+
+  } catch (error) {
+    console.error('Translation connection error:', error);
+    return '';
   }
-
-  // 1. Google Translate
-  try {
-    const url =
-      'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=' +
-      encodeURIComponent(targetLang) +
-      '&dt=t&q=' +
-      encodeURIComponent(clean);
-
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      const translated = Array.isArray(data) && Array.isArray(data[0])
-        ? data[0]
-            .map(part => Array.isArray(part) ? part[0] : '')
-            .join('')
-            .trim()
-        : '';
-
-      if (isValidTranslation(clean, translated)) {
-        return translated;
-      }
-    }
-  } catch (e) {}
-
-  // 2. MyMemory
-  try {
-    const mmUrl =
-      'https://api.mymemory.translated.net/get?q=' +
-      encodeURIComponent(clean) +
-      '&langpair=ar|' +
-      encodeURIComponent(targetLang);
-
-    const mmRes = await fetch(mmUrl);
-    if (mmRes.ok) {
-      const mmData = await mmRes.json();
-      const mmText = String(mmData?.responseData?.translatedText || '').trim();
-      if (isValidTranslation(clean, mmText)) {
-        return mmText;
-      }
-    }
-  } catch (e) {}
-
-  // 3. Lingva Translate fallback
-  try {
-    const lvUrl =
-      'https://lingva.ml/api/v1/ar/' +
-      encodeURIComponent(targetLang) +
-      '/' +
-      encodeURIComponent(clean);
-
-    const lvRes = await fetch(lvUrl);
-    if (lvRes.ok) {
-      const lvData = await lvRes.json();
-      const lvText = String(lvData?.translation || '').trim();
-      if (isValidTranslation(clean, lvText)) {
-        return lvText;
-      }
-    }
-  } catch (e) {}
-
-  return '';
 }
 
 async function requestTranslation(text, targetLang, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const out = await requestTranslationOnce(text, targetLang);
+
     if (out) return out;
+
     if (attempt < retries) {
       await sleep(300 * (attempt + 1));
     }
   }
+
   return '';
 }
 
@@ -1794,8 +1750,6 @@ async function renderArchivePage(mode) {
       s => normalizeName(s.name) === wanted
     );
 
-    // إظهار المقالات التي يبدأ تصنيفها باسم القسم،
-    // حتى عندما يحتوي التصنيف على اسم العدد.
     list = list.filter(x =>
       categoryBelongsToSection(x.category, key)
     );
@@ -1892,8 +1846,6 @@ async function main() {
   const path = location.pathname;
   const qs = new URLSearchParams(location.search);
 
-  // صفحة أرشيف (قسم أو كاتب): نعرفها بوجود #pageArticles
-  // بدل الاعتماد على شكل الرابط (section.html أو /section)
   const isArchive = !!$('#pageArticles');
 
   const isAuthor =
