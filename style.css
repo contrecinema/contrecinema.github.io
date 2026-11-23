@@ -366,3 +366,34 @@ html[dir="ltr"] .article-card small {
 body {
   top: 0 !important;
 }
+/* ===== الشريط العلوي ===== */
+header,
+.site-header,
+.topbar {
+  background: #141210 !important;
+  color: #F5F2ED !important;
+  border-bottom: 1px solid #2A2622 !important;
+}
+
+header a,
+header .brand,
+.site-header a,
+.topbar a {
+  color: #F5F2ED !important;
+}
+
+header #languageSelect,
+.site-header #languageSelect,
+.topbar #languageSelect {
+  background: #1F1B18 !important;
+  color: #F5F2ED !important;
+  border-color: #E8400C !important;
+}
+
+header #themeToggle,
+.site-header #themeToggle,
+.topbar #themeToggle {
+  background: transparent !important;
+  color: #F5F2ED !important;
+  border-color: #F5F2ED !important;
+}
