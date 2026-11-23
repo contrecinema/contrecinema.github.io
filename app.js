@@ -1971,6 +1971,60 @@ async function main() {
 
 
 /* =========================================================
+   VIEWS
+   الرئيسية تعرض الأعداد فقط، وكل قسم آخر يفتح كصفحة مستقلة
+   (يعمل مع روابط القائمة: #articles #sections #team ...)
+========================================================= */
+
+const CC_VIEWS = ['sections', 'articles', 'team', 'editors', 'about', 'contact'];
+
+function ccMarkHomeOnly() {
+  const cur = document.getElementById('currentIssue');
+  if (!cur) return;
+
+  const box = cur.closest('section') || cur.parentElement;
+
+  if (
+    box &&
+    !['issues', 'home'].includes(box.id) &&
+    !box.querySelector('#sections,#articles,#team,#editors,#about,#contact')
+  ) {
+    box.setAttribute('data-home-only', '');
+  }
+}
+
+function ccApplyView() {
+  let h = (location.hash || '').slice(1);
+
+  try {
+    h = decodeURIComponent(h);
+  } catch (e) {}
+
+  if (h.startsWith('article-')) return;
+
+  const root = document.documentElement;
+  const view = CC_VIEWS.includes(h) ? h : 'home';
+  const changed = root.getAttribute('data-view') !== view;
+
+  root.setAttribute('data-view', view);
+
+  if (!changed) return;
+
+  const target = view === 'home' && h ? document.getElementById(h) : null;
+
+  if (target) {
+    target.scrollIntoView();
+  } else {
+    window.scrollTo(0, 0);
+  }
+}
+
+ccMarkHomeOnly();
+ccApplyView();
+window.addEventListener('hashchange', ccApplyView);
+
+
+/* =========================================================
    START
 ========================================================= */
 
