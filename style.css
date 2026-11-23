@@ -9,23 +9,23 @@ a.section-card:hover b{color:var(--red)}
 .issue-body{display:flex;flex-direction:column;gap:0;flex:1}
 .issue-body .issue-links{margin-top:auto}
 
-/* ============ الوضع الليلي ============ */
+/* ============ الوضع الليلي (إسبريسو محمّص دافئ) ============ */
 html[data-theme="dark"]{
-  --surface:#1e1c1a;
-  --surface-2:#221f1c;
-  --band:#0b0a09;
-  --reader-bg:#1a1817;
-  --reader-ink:#eceae5;
-  --reader-line:#3a3632;
-  --reader-muted:#a09a90;
-  --reader-accent:#e2644f;
-  --ink:#f4f1ec;
-  --paper:#141312;
-  --white:#1e1c1a;
-  --line:#3a3632;
-  --red:#c8412f;
-  --muted:#a09a90;
-  --dark:#0a0908;
+  --surface:#2C221C;
+  --surface-2:#342821;
+  --band:#1A1410;
+  --reader-bg:#261E19;
+  --reader-ink:#F5EFE6;
+  --reader-line:#46372E;
+  --reader-muted:#B8A99A;
+  --reader-accent:#E05A47;
+  --ink:#F5EFE6;
+  --paper:#231B16;
+  --white:#2C221C;
+  --line:#46372E;
+  --red:#D94E3A;
+  --muted:#B8A99A;
+  --dark:#19130F;
 }
 
 html[data-theme="dark"] .issue-card{
