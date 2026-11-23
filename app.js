@@ -812,7 +812,34 @@ function lookupStaticTranslation(text, lang) {
       ? `${n} ${n > 1 ? 'lectures' : 'lecture'}`
       : `${n} ${n === 1 ? 'view' : 'views'}`;
   }
-  return null;
+  return lookupMixedTranslation(clean, lang);
+}
+
+const CC_MONTHS = {
+  fr: { 'يناير':'janvier','جانفي':'janvier','فبراير':'février','فيفري':'février','مارس':'mars',
+        'أبريل':'avril','ابريل':'avril','أفريل':'avril','مايو':'mai','ماي':'mai','يونيو':'juin',
+        'جوان':'juin','يوليو':'juillet','جويلية':'juillet','أغسطس':'août','اغسطس':'août','أوت':'août',
+        'سبتمبر':'septembre','أكتوبر':'octobre','اكتوبر':'octobre','نوفمبر':'novembre','ديسمبر':'décembre' },
+  en: { 'يناير':'January','جانفي':'January','فبراير':'February','فيفري':'February','مارس':'March',
+        'أبريل':'April','ابريل':'April','أفريل':'April','مايو':'May','ماي':'May','يونيو':'June',
+        'جوان':'June','يوليو':'July','جويلية':'July','أغسطس':'August','اغسطس':'August','أوت':'August',
+        'سبتمبر':'September','أكتوبر':'October','اكتوبر':'October','نوفمبر':'November','ديسمبر':'December' }
+};
+
+function lookupMixedTranslation(clean, lang) {
+  const months = CC_MONTHS[lang];
+  if (!months) return null;
+  const hasBrand = /ضد\s*السينما/.test(clean);
+  const monthRe = new RegExp('(' + Object.keys(months).join('|') + ')', 'g');
+  const hasMonth = monthRe.test(clean);
+  monthRe.lastIndex = 0;
+  if (!hasBrand && !hasMonth) return null;
+  let t = clean
+    .replace(/ضد\s*السينما(?:\s*[!؟?]+)?/g, 'Contre Cinéma')
+    .replace(monthRe, m => months[m])
+    .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  if (/[\u0600-\u06FF]/.test(t)) return null;
+  return t;
 }
 
 function transliterateArabicName(name) {
@@ -991,7 +1018,7 @@ function queueShare(lang, text, tr) {
   const src = String(text ?? '').trim();
   const out = String(tr ?? '').trim();
   if (lang === 'ar' || !src || !out) return;
-  if (src.length > 600 || out.length > 1200) return;
+  if (src.length > 1200 || out.length > 3000) return;
   if (!/[\u0600-\u06FF]/.test(src)) return;
   CC_SHARE_QUEUE.push({ lang, source: src, text: out });
   clearTimeout(CC_SHARE_TIMER);
@@ -1015,7 +1042,7 @@ async function flushShare() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
-const CC_BUILD = 'build-18';
+const CC_BUILD = 'build-19';
 const CC_DEBUG_ON = /[?&]trdebug/.test(location.search);
 const CC_DEBUG_LINES = [];
 function ccDbg(msg) {
@@ -1078,7 +1105,9 @@ async function callGeminiFunction(clean, targetLang) {
     const data = await res.json().catch(() => ({}));
     const ms = Date.now() - t0;
     if (!res.ok) {
-      if (res.status === 429) ccRateLimited(); else ccFail(false);
+      if (res.status === 429) ccRateLimited();
+      else if (res.status === 503) CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 4000);
+      else ccFail(false);
       ccDbg('GEMINI HTTP ' + res.status + ' ' + ms + 'ms ' + tag + ' ' + JSON.stringify(data).slice(0, 100));
       return '';
     }
