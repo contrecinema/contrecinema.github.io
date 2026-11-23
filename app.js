@@ -1014,6 +1014,15 @@ function writeCachedTranslation(lang, text, translated) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// نباعد بين بدايات الطلبات حتى لا تعتبرها الخدمة المجانية ضغطًا زائدًا
+let CC_LAST_REQ = 0;
+
+async function paceRequests(gap = 250) {
+  const wait = Math.max(0, CC_LAST_REQ + gap - Date.now());
+  CC_LAST_REQ = Date.now() + wait;
+  if (wait) await sleep(wait);
+}
+
 // طلب مع مهلة زمنية: لا ننتظر خدمة بطيئة أكثر من بضع ثوانٍ
 async function fetchT(url, options = {}, ms = 7000) {
   const ctrl = new AbortController();
@@ -1076,7 +1085,7 @@ async function requestTranslationOnce(text, targetLang) {
     } catch (e) {}
   }
 
-  // 1. Google Translate
+  // 1. Google Translate (مع إعادة المحاولة عند الضغط على الخدمة)
   if (providerOk('google')) {
     try {
       const url =
@@ -1085,9 +1094,18 @@ async function requestTranslationOnce(text, targetLang) {
         '&dt=t&q=' +
         encodeURIComponent(clean);
 
-      const res = await fetchT(url);
+      let res = null;
 
-      if (res.ok) {
+      for (let k = 0; k < 3; k++) {
+        await paceRequests();
+        res = await fetchT(url);
+
+        if (res.status !== 429 && res.status < 500) break;
+
+        await sleep(900 * (k + 1));
+      }
+
+      if (res && res.ok) {
         const data = await res.json();
         const translated = Array.isArray(data) && Array.isArray(data[0])
           ? data[0]
@@ -1099,7 +1117,7 @@ async function requestTranslationOnce(text, targetLang) {
         if (isValidTranslation(clean, translated)) {
           return translated;
         }
-      } else {
+      } else if (res && res.status !== 429) {
         providerFailed('google');
       }
     } catch (e) {
@@ -1313,9 +1331,25 @@ async function translateParagraph(paragraph, lang) {
 }
 
 async function translateArticleInPlace(article, paragraphs, lang, requestId) {
+  const startedAt = Date.now();
+
   const stale = () =>
     requestId !== CC_OPEN_ARTICLE_REQUEST ||
     getCurrentLang() !== lang;
+
+  const msg = lang === 'fr'
+    ? {
+        working: 'Traduction en cours…',
+        partial: 'Certains passages n’ont pas pu être traduits pour le moment.'
+      }
+    : {
+        working: 'Translating…',
+        partial: 'Some passages could not be translated right now.'
+      };
+
+  const nodes = Array.from(
+    document.querySelectorAll('#ccArticleContent .cc-article-body p.cc-p')
+  );
 
   const host = document.getElementById('ccArticleContent');
   let status = null;
@@ -1325,12 +1359,13 @@ async function translateArticleInPlace(article, paragraphs, lang, requestId) {
     status.className = 'cc-trans-status';
     status.style.cssText =
       'margin:0 0 18px;font-size:13px;color:var(--reader-muted)';
-    status.textContent = lang === 'fr'
-      ? 'Traduction en cours…'
-      : 'Translating…';
+    status.textContent = msg.working + ' 0/' + nodes.length;
 
     host.insertBefore(status, host.firstChild);
   }
+
+  let done = 0;
+  let failed = 0;
 
   try {
     // العنوان والتصنيف أولًا
@@ -1344,15 +1379,18 @@ async function translateArticleInPlace(article, paragraphs, lang, requestId) {
       if (el && !stale()) el.textContent = t;
     });
 
-    const nodes = Array.from(
-      document.querySelectorAll('#ccArticleContent .cc-article-body p.cc-p')
-    );
-
     let next = 0;
 
-    const workers = Array.from({ length: 4 }, async () => {
+    const workers = Array.from({ length: 2 }, async () => {
       while (next < nodes.length) {
         if (stale()) return;
+
+        // حد أقصى للانتظار حتى لا تبقى الترجمة معلّقة
+        if (Date.now() - startedAt > 90000) {
+          failed += nodes.length - next;
+          next = nodes.length;
+          return;
+        }
 
         const i = next++;
         const node = nodes[i];
@@ -1364,13 +1402,29 @@ async function translateArticleInPlace(article, paragraphs, lang, requestId) {
 
         if (stale()) return;
 
-        node.innerHTML = formatArticleText(translated);
+        if (translated === source) {
+          if (/[\u0600-\u06FF]/.test(source)) failed++;
+        } else {
+          node.innerHTML = formatArticleText(translated);
+        }
+
+        done++;
+
+        if (status) {
+          status.textContent = msg.working + ' ' + done + '/' + nodes.length;
+        }
       }
     });
 
     await Promise.all(workers);
   } finally {
-    if (status) status.remove();
+    if (status) {
+      if (failed > 0 && !stale()) {
+        status.textContent = msg.partial;
+      } else {
+        status.remove();
+      }
+    }
   }
 }
 
