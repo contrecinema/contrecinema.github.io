@@ -205,8 +205,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 }
 
 .hero-text-panel {
-  width: 100%;
-  max-width: 100%;
+  width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
   background: #D8C8B4;
   border: 1px solid #C2AE96;
@@ -233,7 +232,8 @@ html[data-theme="dark"] .hero-text-panel {
 }
 
 .hero-actions {
-  margin-top: 0;
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
   padding: 10px 0 16px;
 }
 
@@ -256,8 +256,7 @@ html[data-theme="dark"] .hero-text-panel {
   }
 
   .hero-text-panel {
-    width: 100%;
-    max-width: 100%;
+    width: min(100% - 24px, 1180px);
     margin: 0 auto;
     border-radius: 16px;
     padding: 14px 16px 12px;
@@ -273,6 +272,8 @@ html[data-theme="dark"] .hero-text-panel {
   }
 
   .hero-actions {
+    width: min(100% - 24px, 1180px);
+    margin: 0 auto;
     padding: 10px 0 14px;
   }
 }
