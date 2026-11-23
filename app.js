@@ -691,10 +691,10 @@ function bindShareCopy(article, lang = 'ar') {
 }
 
 /* =========================================================
-   FAST MULTILINGUAL SYSTEM (CLIENT-SIDE OPTIMIZED)
+   MULTILINGUAL SYSTEM (PRIORITY ABOVE-THE-FOLD + RETRY)
 ========================================================= */
 const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v11_';
+const CC_CACHE_PREFIX = 'cc_tr_v12_';
 const CC_MEMORY_CACHE = new Map();
 const CC_INFLIGHT_REQUESTS = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
@@ -708,17 +708,19 @@ const AUTHORS_LATIN_MAP = {
   [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
 };
 
-// ترجمات فورية للنصوص الثابتة المتكررة في الواجهة (بدون أي استدعاء للشبكة)
 const STATIC_UI_TRANSLATIONS = {
   fr: {
     'الرئيسية': 'Accueil',
     'الأقسام': 'Rubriques',
     'المقالات': 'Articles',
+    'آخر المقالات': 'Derniers articles',
+    'تصفح الأعداد': 'Parcourir les numéros',
     'الأعداد': 'Numéros',
     'هيئة التحرير': 'Comité de rédaction',
     'المحررون': 'Rédacteurs',
     'عن المجلة': 'À propos',
     'تواصل معنا': 'Contact',
+    'مجلة عربية مستقلة للنقد السينمائي': 'Revue arabe indépendante de critique cinématographique',
     'رؤى سينمائية': 'Visions cinématographiques',
     'مراجعات': 'Critiques',
     'أفلام الشهر': 'Films du mois',
@@ -740,11 +742,14 @@ const STATIC_UI_TRANSLATIONS = {
     'الرئيسية': 'Home',
     'الأقسام': 'Sections',
     'المقالات': 'Articles',
+    'آخر المقالات': 'Latest Articles',
+    'تصفح الأعداد': 'Browse Issues',
     'الأعداد': 'Issues',
     'هيئة التحرير': 'Editorial Board',
     'المحررون': 'Editors',
     'عن المجلة': 'About',
     'تواصل معنا': 'Contact',
+    'مجلة عربية مستقلة للنقد السينمائي': 'Independent Arabic Film Criticism Magazine',
     'رؤى سينمائية': 'Cinematic Visions',
     'مراجعات': 'Reviews',
     'أفلام الشهر': 'Films of the Month',
@@ -770,7 +775,6 @@ function lookupStaticTranslation(text, lang) {
   const clean = String(text ?? '').trim();
   if (dict[clean]) return dict[clean];
 
-  // مطابقة أنماط متكررة مثل "العدد 12" أو "قراءة واحدة / X قراءة"
   const issueMatch = clean.match(/^العدد\s+(\d+)$/);
   if (issueMatch) {
     return lang === 'fr' ? `Numéro ${issueMatch[1]}` : `Issue ${issueMatch[1]}`;
@@ -833,9 +837,6 @@ function transliterateArabicName(name) {
   }).join(' ');
 }
 
-/* =========================================================
-   TRANSLATION CACHE
-========================================================= */
 function scheduleIdleCacheCleanup() {
   const run = () => {
     try {
@@ -854,9 +855,9 @@ function scheduleIdleCacheCleanup() {
     } catch (e) {}
   };
   if ('requestIdleCallback' in window) {
-    requestIdleCallback(run, { timeout: 3000 });
+    requestIdleCallback(run, { timeout: 3500 });
   } else {
-    setTimeout(run, 2500);
+    setTimeout(run, 3000);
   }
 }
 
@@ -868,6 +869,12 @@ function getCurrentLang() {
     }
   } catch (e) {}
   return 'ar';
+}
+
+function setSavedLang(lang) {
+  try {
+    localStorage.setItem(CC_LANG_KEY, lang);
+  } catch (e) {}
 }
 
 function applyHtmlDirection(lang) {
@@ -926,13 +933,10 @@ function writeCachedTranslation(lang, text, translated) {
   } catch (e) {}
 }
 
-/* =========================================================
-   TRANSLATION REQUEST (DEDUPLICATED + FAST TIMEOUT)
-========================================================= */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
-async function requestTranslationOnce(text, targetLang, timeoutMs = 12000) {
+async function requestTranslationOnce(text, targetLang, timeoutMs = 14000) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
 
@@ -964,7 +968,7 @@ async function requestTranslationOnce(text, targetLang, timeoutMs = 12000) {
   }
 }
 
-async function requestTranslation(text, targetLang, retries = 1) {
+async function requestTranslation(text, targetLang, retries = 2) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
 
@@ -978,7 +982,7 @@ async function requestTranslation(text, targetLang, retries = 1) {
       const out = await requestTranslationOnce(clean, targetLang);
       if (out) return out;
       if (attempt < retries) {
-        await sleep(150);
+        await sleep(200 * (attempt + 1));
       }
     }
     return '';
@@ -990,15 +994,10 @@ async function requestTranslation(text, targetLang, retries = 1) {
   return promise;
 }
 
-/* =========================================================
-   TRANSLATE TEXT
-========================================================= */
-async function translateText(text, targetLang, el = null) {
+async function translateText(text, targetLang, el = null, retries = 2) {
   const original = String(text ?? '');
   const clean = original.trim();
   if (!clean || targetLang === 'ar') return original;
-
-  // تخطي الأرقام والرموز الخالية من الحروف
   if (!/[\p{L}]/u.test(clean)) return original;
 
   const authorEl = el
@@ -1014,7 +1013,7 @@ async function translateText(text, targetLang, el = null) {
     return original.replace(clean, cached);
   }
 
-  const translated = await requestTranslation(clean, targetLang, 1);
+  const translated = await requestTranslation(clean, targetLang, retries);
   if (!translated || !isValidTranslation(clean, translated)) {
     return original;
   }
@@ -1023,9 +1022,6 @@ async function translateText(text, targetLang, el = null) {
   return original.replace(clean, translated);
 }
 
-/* =========================================================
-   SPLIT LONG TEXT (LARGER CHUNKS = FEWER REQUESTS)
-========================================================= */
 function splitTextForTranslation(text, maxLength = 2200) {
   const source = String(text ?? '');
   if (source.length <= maxLength) return [source];
@@ -1058,9 +1054,6 @@ function splitTextForTranslation(text, maxLength = 2200) {
   return chunks;
 }
 
-/* =========================================================
-   WHOLE ARTICLE TRANSLATION (PARALLEL CHUNKS)
-========================================================= */
 async function translateWholeArticle(content, lang) {
   const original = String(content ?? '');
   if (!original.trim() || lang === 'ar') {
@@ -1096,7 +1089,7 @@ async function translateWholeArticle(content, lang) {
         continue;
       }
 
-      const translated = await requestTranslation(chunk, lang, 1);
+      const translated = await requestTranslation(chunk, lang, 2);
       if (translated && isValidTranslation(chunk, translated)) {
         writeCachedTranslation(lang, chunk, translated);
         translatedChunks[i] = translated;
@@ -1121,9 +1114,6 @@ async function translateWholeArticle(content, lang) {
   return result;
 }
 
-/* =========================================================
-   SAFE DOM TRANSLATION
-========================================================= */
 function shouldSkipTranslationNode(node) {
   if (!node || !node.parentElement) return true;
   const parent = node.parentElement;
@@ -1148,6 +1138,13 @@ function shouldSkipTranslationNode(node) {
   return false;
 }
 
+function isNearViewport(el) {
+  if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight || 800;
+  return rect.top < vh * 1.35 && rect.bottom > -vh * 0.35;
+}
+
 function collectTranslatableTextNodes() {
   const nodes = [];
   const walker = document.createTreeWalker(
@@ -1160,6 +1157,12 @@ function collectTranslatableTextNodes() {
       nodes.push(node);
     }
   }
+  // ترتيب العناصر بحيث تُترجم العناصر الظاهرة في الشاشة أولاً
+  nodes.sort((a, b) => {
+    const aVis = isNearViewport(a.parentElement) ? 0 : 1;
+    const bVis = isNearViewport(b.parentElement) ? 0 : 1;
+    return aVis - bVis;
+  });
   return nodes;
 }
 
@@ -1210,14 +1213,12 @@ async function applyLanguageToDom(lang) {
     const clean = String(source ?? '').trim();
     if (!clean) continue;
 
-    // 1. أسماء الكتاب تُحوّل صوتياً فوراً
     if (authorEl) {
       const arSource = authorEl.dataset.arName || clean;
       node.textContent = source.replace(clean, transliterateArabicName(arSource));
       continue;
     }
 
-    // 2. النصوص المخزنة في الكاش أو القاموس الثابت تُطبَّق فوراً
     const cached = readCachedTranslation(lang, clean);
     if (cached !== null) {
       node.textContent = source.replace(clean, cached);
@@ -1233,33 +1234,48 @@ async function applyLanguageToDom(lang) {
 
   if (!pending.length) return;
 
-  let index = 0;
-  const concurrency = 6;
-  async function worker() {
-    while (index < pending.length) {
-      if (runId !== CC_TRANSLATION_RUN) return;
-      const current = pending[index++];
-      if (!current.node.isConnected) continue;
+  async function runQueue(items, concurrency, retries) {
+    let index = 0;
+    async function worker() {
+      while (index < items.length) {
+        if (runId !== CC_TRANSLATION_RUN || getCurrentLang() !== lang) return;
+        const current = items[index++];
+        if (!current.node.isConnected) continue;
 
-      const translated = await translateText(
-        current.source,
-        lang,
-        current.parent
-      );
+        const translated = await translateText(
+          current.source,
+          lang,
+          current.parent,
+          retries
+        );
 
-      if (
-        runId === CC_TRANSLATION_RUN &&
-        getCurrentLang() === lang &&
-        current.node.isConnected
-      ) {
-        current.node.textContent = translated;
+        if (
+          runId === CC_TRANSLATION_RUN &&
+          getCurrentLang() === lang &&
+          current.node.isConnected
+        ) {
+          current.node.textContent = translated;
+        }
       }
     }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, items.length) }, worker)
+    );
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, pending.length) }, worker)
-  );
+  // جولة أولى بتوازي معتدل لتجنب ضغط السيرفر
+  await runQueue(pending, 4, 2);
+
+  // إعادة محاولة للعناوين والنصوص التي بقيت عربية بعد الجولة الأولى
+  if (runId === CC_TRANSLATION_RUN && getCurrentLang() === lang) {
+    const leftover = pending.filter(
+      it => it.node.isConnected && /[\u0600-\u06FF]/.test(it.node.textContent || '')
+    );
+    if (leftover.length) {
+      await sleep(250);
+      await runQueue(leftover, 3, 2);
+    }
+  }
 }
 
 /* =========================================================
@@ -1276,15 +1292,12 @@ function initLanguageSwitcher() {
     const chosen = ['fr', 'en'].includes(select.value)
       ? select.value
       : 'ar';
-    try {
-      localStorage.setItem(CC_LANG_KEY, chosen);
-    } catch (e) {}
+    setSavedLang(chosen);
 
     const reader = document.getElementById('ccArticleReader');
     const isReaderOpen = reader && reader.classList.contains('is-open');
     const article = window.__CC_OPEN_ARTICLE__;
 
-    // إذا كان القارئ مفتوحاً، نحدّثه أولاً ثم نترجم الخلفية
     if (isReaderOpen && article) {
       await openArticle(article.id, true);
     }
@@ -1338,7 +1351,6 @@ async function openArticle(id, keepReaderOpen = false) {
   if (!target) return;
   const lang = getCurrentLang();
 
-  // إظهار شاشة الانتظار فقط إذا لم يكن المقال مخزناً مسبقاً في الكاش
   const rawContent = String(article.content || '');
   const isContentCached =
     lang === 'ar' ||
@@ -1368,8 +1380,8 @@ async function openArticle(id, keepReaderOpen = false) {
       ]
     : await Promise.all([
         rawContent.trim() ? translateWholeArticle(rawContent, lang) : '',
-        translateText(article.title || '', lang),
-        translateText(article.category || 'نقد سينمائي', lang)
+        translateText(article.title || '', lang, null, 2),
+        translateText(article.category || 'نقد سينمائي', lang, null, 2)
       ]);
 
   if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
