@@ -1,8 +1,7 @@
-
-
 const SUPABASE_URL = 'https://qclqyqjxsnnhlnlhjybo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_zTxQEl6b0KSv1fE9tG202g_Rt4X05YV';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 /* =========================================================
    IMAGE ERROR HANDLING
 ========================================================= */
@@ -13,6 +12,7 @@ addEventListener('error', e => {
     el.style.display = 'none';
   }
 }, true);
+
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -21,6 +21,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;',
   '"': '&quot;', "'": '&#039;'
 }[m]));
+
 function safeUrl(url) {
   if (!url) return '';
   try {
@@ -31,6 +32,7 @@ function safeUrl(url) {
   } catch (e) {}
   return '';
 }
+
 function normalizeName(value) {
   return String(value ?? '')
     .normalize('NFC')
@@ -42,6 +44,7 @@ function normalizeName(value) {
     .trim()
     .toLowerCase();
 }
+
 /* =========================================================
    SECTION CATEGORY MATCHING
 ========================================================= */
@@ -50,10 +53,13 @@ function categoryBelongsToSection(category, sectionName) {
   const section = normalizeName(sectionName);
   if (!cat || !section) return false;
   if (cat === section) return true;
+
   const aliases = {
     'الملف': ['الملف', 'ملف']
   };
+
   const names = aliases[section] || [section];
+
   return names.some(name =>
     cat === name ||
     (
@@ -62,6 +68,7 @@ function categoryBelongsToSection(category, sectionName) {
     )
   );
 }
+
 /* =========================================================
    THEME
 ========================================================= */
@@ -71,27 +78,35 @@ function applyTheme(theme) {
     theme === 'dark' ? 'dark' : 'light'
   );
 }
+
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   const next = current === 'dark' ? 'light' : 'dark';
+
   try {
     localStorage.setItem('cc-theme', next);
   } catch (e) {}
+
   applyTheme(next);
 }
+
 function initTheme() {
   let stored = null;
+
   try {
     stored = localStorage.getItem('cc-theme');
   } catch (e) {}
+
   applyTheme(
     stored ||
     (window.matchMedia &&
       window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark' : 'light')
   );
+
   const button = $('#themeToggle');
   if (button) button.onclick = toggleTheme;
+
   document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.shiftKey && ['A', 'a'].includes(e.key)) {
       e.preventDefault();
@@ -99,6 +114,7 @@ function initTheme() {
     }
   });
 }
+
 /* =========================================================
    MOBILE MENU
 ========================================================= */
@@ -107,9 +123,11 @@ if ($('#hamb')) {
     document.body.classList.toggle('nav-open');
   };
 }
+
 document.querySelectorAll('#nav a').forEach(a => {
   a.onclick = () => document.body.classList.remove('nav-open');
 });
+
 /* =========================================================
    FALLBACK DATA
 ========================================================= */
@@ -121,6 +139,7 @@ const fallbackIssues = Array.from({ length: 9 }, (_, i) => ({
   pdf_url: '',
   cover_image: ''
 }));
+
 const fallbackSections = [
   'رؤى سينمائية',
   'مراجعات',
@@ -131,6 +150,7 @@ const fallbackSections = [
   'الملف',
   'متابعات'
 ];
+
 /* =========================================================
    DATABASE GET
 ========================================================= */
@@ -140,51 +160,63 @@ async function get(table, order = 'created_at', ascending = false) {
       .from(table)
       .select('*')
       .order(order, { ascending });
+
     if (r.error) {
       console.error(`Supabase ${table}:`, r.error);
       r = await db.from(table).select('*');
+
       if (r.error) {
         console.error(`Supabase ${table} (no order):`, r.error);
         return [];
       }
     }
+
     return r.data || [];
   } catch (e) {
     console.error(e);
     return [];
   }
 }
+
 /* =========================================================
    ISSUE COVER
 ========================================================= */
 function cover(x) {
   const image = safeUrl(x.cover_image);
+
   if (image) {
     return `<img src="${esc(image)}" alt="غلاف العدد ${esc(x.issue_number)}" loading="lazy">`;
   }
+
   return `<span>العدد ${esc(x.issue_number)}</span>`;
 }
+
 /* =========================================================
    ISSUES
 ========================================================= */
 function renderIssues(items) {
   const target = $('#issuesGrid');
   if (!target) return;
+
   const range = $('#issuesRange');
+
   if (range && items.length) {
     const nums = items
       .map(x => Number(x.issue_number))
       .filter(n => !Number.isNaN(n));
+
     if (nums.length) {
       range.textContent =
         'من العدد ' + Math.min(...nums) +
         ' إلى العدد ' + Math.max(...nums);
     }
   }
+
   target.innerHTML = items.map(x => {
     const year = (
       String(x.publication_date || '').match(/(?:19|20)\d{2}/) || []
     )[0];
+
     return `
       <article class="issue-card">
         <div class="issue-cover">${cover(x)}</div>
@@ -210,12 +242,14 @@ function renderIssues(items) {
     `;
   }).join('');
 }
+
 /* =========================================================
    CURRENT ISSUE
 ========================================================= */
 function renderCurrent(x) {
   const target = $('#currentIssue');
   if (!target) return;
+
   if (!x) {
     target.innerHTML = `
       <div class="empty">
@@ -225,7 +259,9 @@ function renderCurrent(x) {
     `;
     return;
   }
+
   const image = safeUrl(x.cover_image);
+
   target.innerHTML = `
     <div class="current-cover">
       ${
@@ -251,12 +287,14 @@ function renderCurrent(x) {
     </div>
   `;
 }
+
 /* =========================================================
    SECTIONS
 ========================================================= */
 function renderSections(items) {
   const target = $('#sectionsGrid');
   if (!target) return;
+
   const a = items.length
     ? items
     : fallbackSections.map((name, i) => ({
@@ -264,6 +302,7 @@ function renderSections(items) {
         description: 'قسم من أقسام المجلة',
         sort_order: i
       }));
+
   target.innerHTML = a.map(x => `
     <a class="section-card" href="section.html?slug=${encodeURIComponent(x.name)}">
       <b>${esc(x.name)}</b>
@@ -271,24 +310,31 @@ function renderSections(items) {
     </a>
   `).join('');
 }
+
 /* =========================================================
    ARTICLE CARD
 ========================================================= */
 function viewsLabel(n, lang = 'ar') {
   const v = Number(n) || 0;
+
   if (lang === 'fr') {
     return v + (v > 1 ? ' lectures' : ' lecture');
   }
+
   if (lang === 'en') {
     return v + (v === 1 ? ' view' : ' views');
   }
+
   if (v === 1) return 'قراءة واحدة';
   if (v === 2) return 'قراءتان';
   if (v <= 10) return v + ' قراءات';
+
   return v + ' قراءة';
 }
+
 function articleCard(x) {
   const image = safeUrl(x.image_1);
+
   return `
     <article
       class="article-card"
@@ -321,12 +367,14 @@ function articleCard(x) {
     </article>
   `;
 }
+
 /* =========================================================
    ARTICLES GRID
 ========================================================= */
 function renderArticles(items) {
   const target = $('#articlesGrid');
   if (!target) return;
+
   if (!items.length) {
     target.innerHTML = `
       <div class="empty">
@@ -335,16 +383,19 @@ function renderArticles(items) {
     `;
     return;
   }
+
   window.__CC_ARTICLES__ = items;
   target.innerHTML = items.map(articleCard).join('');
   bindArticleClicks(target);
 }
+
 function bindArticleClicks(target) {
   target.querySelectorAll('[data-article-id]').forEach(card => {
     card.onclick = e => {
       if (e.target.closest('[data-author-link]')) return;
       openArticle(card.dataset.articleId);
     };
+
     card.onkeydown = e => {
       if (e.key === 'Enter' || e.key === ' ') {
         if (e.target.closest('a')) return;
@@ -354,12 +405,14 @@ function bindArticleClicks(target) {
     };
   });
 }
+
 /* =========================================================
    TEAM
 ========================================================= */
 function renderTeam(items) {
   const target = $('#teamGrid');
   if (!target) return;
+
   target.innerHTML = items.length
     ? items.map(x => `
         <article class="person">
@@ -377,15 +430,18 @@ function renderTeam(items) {
       `).join('')
     : `<div class="empty">أضف أعضاء هيئة التحرير من لوحة التحكم.</div>`;
 }
+
 /* =========================================================
    EDITORS
 ========================================================= */
 function renderEditors(items) {
   const target = $('#editorsGrid');
   if (!target) return;
+
   target.innerHTML = items.length
     ? items.map(x => {
         const fullName = [x.name, x.surname].filter(Boolean).join(' ');
+
         return `
           <article class="person">
             <div class="avatar">
@@ -402,13 +458,16 @@ function renderEditors(items) {
       }).join('')
     : `<div class="empty">أضف المحررين من لوحة التحكم.</div>`;
 }
+
 /* =========================================================
    ARTICLE READER
 ========================================================= */
 function createArticleReader() {
   if (document.getElementById('ccArticleReader')) return;
+
   const reader = document.createElement('div');
   reader.id = 'ccArticleReader';
+
   reader.innerHTML = `
     <div class="cc-reader-backdrop" data-close-reader></div>
     <article class="cc-reader" role="dialog" aria-modal="true" aria-label="قراءة المقال">
@@ -416,24 +475,31 @@ function createArticleReader() {
       <div class="cc-reader-inner" id="ccArticleContent"></div>
     </article>
   `;
+
   document.body.appendChild(reader);
+
   reader.querySelectorAll('[data-close-reader]').forEach(button => {
     button.onclick = closeArticle;
   });
+
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && reader.classList.contains('is-open')) {
       closeArticle();
     }
   });
+
   addArticleReaderStyles();
 }
+
 /* =========================================================
    ARTICLE READER STYLES
 ========================================================= */
 function addArticleReaderStyles() {
   if (document.getElementById('ccArticleReaderStyles')) return;
+
   const style = document.createElement('style');
   style.id = 'ccArticleReaderStyles';
+
   style.textContent = `
     #ccArticleReader{position:fixed;inset:0;z-index:99999;display:none;overflow:auto}
     #ccArticleReader.is-open{display:block}
@@ -478,56 +544,67 @@ function addArticleReaderStyles() {
       .cc-share-btn{padding:8px 11px;font-size:12px}
     }
   `;
+
   document.head.appendChild(style);
 }
+
 /* =========================================================
    ARTICLE CONTENT
 ========================================================= */
 function articleParagraphs(content) {
   if (!content) return [];
+
   return String(content)
     .replace(/\r\n/g, '\n')
     .split(/\n\s*\n/)
     .map(p => p.trim())
     .filter(Boolean);
 }
+
 function formatArticleText(text) {
   return String(text ?? '')
     .replace(/\r\n/g, '\n')
     .split('\n')
     .map(line => {
       let safe = esc(line);
+
       if (/^##[ \t]+/.test(line)) {
         safe = safe.replace(
           /^##[ \t]+(.*)$/,
           '<span class="cc-h">$1</span>'
         );
       }
+
       if (/^>[ \t]?/.test(line) && line.trim()) {
         safe = safe.replace(
           /^&gt;[ \t]?(.*)$/,
           '<span class="cc-quote">$1</span>'
         );
       }
+
       return safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     })
     .join(' ');
 }
+
 function articleImage(url, alt = '') {
   const safe = safeUrl(url);
   if (!safe) return '';
+
   return `
     <figure class="cc-article-image">
       <img src="${esc(safe)}" alt="${esc(alt)}" loading="lazy">
     </figure>
   `;
 }
+
 /* =========================================================
    ARTICLE SHARE
 ========================================================= */
 function articleLink(id) {
   return location.origin + '/share/' + encodeURIComponent(id) + '/';
 }
+
 function shareIcon(path) {
   return `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -537,10 +614,12 @@ function shareIcon(path) {
     </svg>
   `;
 }
+
 function shareBar(article, lang = 'ar') {
   const url = articleLink(article.id);
   const title = article.title || 'ضد السينما !؟';
   const e = encodeURIComponent;
+
   const labels = lang === 'fr'
     ? {
         share: 'Partager cet article',
@@ -567,6 +646,7 @@ function shareBar(article, lang = 'ar') {
           email: 'البريد',
           copy: 'نسخ الرابط'
         };
+
   const targets = [
     {
       label: labels.facebook,
@@ -594,6 +674,7 @@ function shareBar(article, lang = 'ar') {
       icon: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM22 7l-10 5L2 7'
     }
   ];
+
   return `
     <div class="cc-share">
       <span class="cc-share-label">${labels.share}</span>
@@ -614,6 +695,7 @@ function shareBar(article, lang = 'ar') {
     </div>
   `;
 }
+
 function legacyCopy(text, onDone) {
   try {
     const field = document.createElement('textarea');
@@ -628,10 +710,13 @@ function legacyCopy(text, onDone) {
     onDone();
   } catch (e) {}
 }
+
 function bindShareCopy(article, lang = 'ar') {
   const button = document.getElementById('ccShareCopy');
   if (!button) return;
+
   const label = button.querySelector('span');
+
   const done = () => {
     if (label) {
       label.textContent = lang === 'fr'
@@ -640,25 +725,31 @@ function bindShareCopy(article, lang = 'ar') {
           ? 'Link copied'
           : 'تم نسخ الرابط';
     }
+
     button.classList.add('is-done');
   };
+
   button.onclick = function () {
     const url = articleLink(article.id);
     let settled = false;
+
     const finish = () => {
       if (settled) return;
       settled = true;
       done();
     };
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url)
         .then(finish)
         .catch(() => legacyCopy(url, finish));
       return;
     }
+
     legacyCopy(url, finish);
   };
 }
+
 /* =========================================================
    MULTILINGUAL SYSTEM
 ========================================================= */
@@ -666,6 +757,7 @@ const CC_LANG_KEY = 'cc-lang';
 const CC_CACHE_PREFIX = 'cc_tr_v10_';
 const CC_MEMORY_CACHE = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
+
 const AUTHORS_LATIN_MAP = {
   [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
   [normalizeName('محمدي حكيم')]: 'Mohammedi Hakim',
@@ -674,18 +766,24 @@ const AUTHORS_LATIN_MAP = {
   [normalizeName('عامر طارق')]: 'Amer Tariq',
   [normalizeName('محمد بن زيان')]: 'Mohamed Ben Zayan'
 };
+
 function transliterateArabicName(name) {
   const raw = String(name ?? '').trim();
   if (!raw) return raw;
+
   const norm = normalizeName(raw);
+
   if (AUTHORS_LATIN_MAP[norm]) {
     return AUTHORS_LATIN_MAP[norm];
   }
+
   if (!/[\u0600-\u06FF]/.test(raw)) return raw;
+
   const digraphs = [
     ['ال', 'El '], ['تش', 'Tch'], ['ث', 'Th'],
     ['خ', 'Kh'], ['ذ', 'Dh'], ['ش', 'Ch'], ['غ', 'Gh']
   ];
+
   const singleMap = {
     'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ء': '',
     'ب': 'b', 'ت': 't', 'ج': 'j', 'ح': 'h', 'د': 'd',
@@ -694,11 +792,14 @@ function transliterateArabicName(name) {
     'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h',
     'و': 'w', 'ي': 'y', 'ى': 'a', 'ة': 'a'
   };
+
   return raw.split(/\s+/).filter(Boolean).map(word => {
     let i = 0;
     let out = '';
+
     while (i < word.length) {
       let matched = false;
+
       for (const [arSeq, latSeq] of digraphs) {
         if (word.startsWith(arSeq, i)) {
           out += latSeq;
@@ -707,26 +808,32 @@ function transliterateArabicName(name) {
           break;
         }
       }
+
       if (!matched) {
         const ch = word[i];
         out += singleMap[ch] !== undefined ? singleMap[ch] : ch;
         i++;
       }
     }
+
     out = out.trim();
+
     return out
       ? out.charAt(0).toUpperCase() + out.slice(1)
       : word;
   }).join(' ');
 }
+
 /* =========================================================
    TRANSLATION CACHE
 ========================================================= */
 function clearOldTranslationCache() {
   try {
     const keysToRemove = [];
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
+
       if (
         key &&
         /^cc_tr_v[1-9]_/.test(key) &&
@@ -735,79 +842,110 @@ function clearOldTranslationCache() {
         keysToRemove.push(key);
       }
     }
+
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
     });
   } catch (e) {}
+
   CC_MEMORY_CACHE.clear();
 }
+
 function getCurrentLang() {
   try {
     const saved = localStorage.getItem(CC_LANG_KEY);
+
     if (saved === 'fr' || saved === 'en' || saved === 'ar') {
       return saved;
     }
   } catch (e) {}
+
   return 'ar';
 }
+
 function applyHtmlDirection(lang) {
   const isAr = lang === 'ar';
+
   document.documentElement.lang = lang;
   document.documentElement.dir = isAr ? 'rtl' : 'ltr';
   document.body.dir = isAr ? 'rtl' : 'ltr';
 }
+
 function cacheKeyFor(lang, text) {
   let hash = 2166136261;
   const str = lang + '::' + text;
+
   for (let i = 0; i < str.length; i++) {
     hash ^= str.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
+
   return CC_CACHE_PREFIX + lang + '_' + (hash >>> 0).toString(16);
 }
+
 function isValidTranslation(original, translated) {
   const source = String(original ?? '').trim();
   const result = String(translated ?? '').trim();
+
   if (!source || !result) return false;
-  if (result === source && /[\u0600-\u06FF]/.test(source)) return false;
+
+  if (result === source && /[\u0600-\u06FF]/.test(source)) {
+    return false;
+  }
+
   if (/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(result)) {
     return false;
   }
+
   return true;
 }
+
 function readCachedTranslation(lang, text) {
   const key = cacheKeyFor(lang, text);
+
   if (CC_MEMORY_CACHE.has(key)) {
     return CC_MEMORY_CACHE.get(key);
   }
+
   try {
     const value = localStorage.getItem(key);
+
     if (value && isValidTranslation(text, value)) {
       CC_MEMORY_CACHE.set(key, value);
       return value;
     }
+
     if (value) localStorage.removeItem(key);
   } catch (e) {}
+
   return null;
 }
+
 function writeCachedTranslation(lang, text, translated) {
   if (!isValidTranslation(text, translated)) return;
+
   const key = cacheKeyFor(lang, text);
   CC_MEMORY_CACHE.set(key, translated);
+
   try {
     localStorage.setItem(key, translated);
   } catch (e) {}
 }
+
 /* =========================================================
    TRANSLATION REQUEST
    Gemini through Supabase Edge Function
 ========================================================= */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 const CC_TRANSLATE_ENDPOINT =
   SUPABASE_URL + '/functions/v1/translate';
+
 async function requestTranslationOnce(text, targetLang) {
   const clean = String(text ?? '').trim();
+
   if (!clean || targetLang === 'ar') return clean;
+
   try {
     const res = await fetch(CC_TRANSLATE_ENDPOINT, {
       method: 'POST',
@@ -820,7 +958,9 @@ async function requestTranslationOnce(text, targetLang) {
         targetLang
       })
     });
+
     const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
       console.error(
         'Gemini translation error:',
@@ -829,66 +969,87 @@ async function requestTranslationOnce(text, targetLang) {
       );
       return '';
     }
+
     const translated = String(
       data?.translatedText || ''
     ).trim();
+
     if (isValidTranslation(clean, translated)) {
       return translated;
     }
+
     console.error(
       'Invalid Gemini translation response:',
       data
     );
+
     return '';
   } catch (error) {
     console.error('Translation connection error:', error);
     return '';
   }
 }
-async function requestTranslation(text, targetLang, retries = 2) {
+
+async function requestTranslation(text, targetLang, retries = 1) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const out = await requestTranslationOnce(text, targetLang);
+
     if (out) return out;
+
     if (attempt < retries) {
-      await sleep(300 * (attempt + 1));
+      await sleep(250);
     }
   }
+
   return '';
 }
+
 /* =========================================================
    TRANSLATE TEXT
 ========================================================= */
 async function translateText(text, targetLang, el = null) {
   const original = String(text ?? '');
   const clean = original.trim();
+
   if (!clean || targetLang === 'ar') return original;
+
   const authorEl = el
     ? (el.hasAttribute('data-author-name') ? el : el.closest('[data-author-name]'))
     : null;
+
   if (authorEl) {
     const arSource = authorEl.dataset.arName || clean;
     return original.replace(clean, transliterateArabicName(arSource));
   }
+
   const cached = readCachedTranslation(targetLang, clean);
+
   if (cached !== null) {
     return original.replace(clean, cached);
   }
+
   const translated = await requestTranslation(clean, targetLang);
+
   if (!translated || !isValidTranslation(clean, translated)) {
     return original;
   }
+
   writeCachedTranslation(targetLang, clean, translated);
+
   return original.replace(clean, translated);
 }
+
 /* =========================================================
-   SPLIT LONG TEXT
+   SPLIT LONG TEXT - OPTIMIZED
 ========================================================= */
-function splitTextForTranslation(text, maxLength = 400) {
+function splitTextForTranslation(text, maxLength = 3000) {
   const source = String(text ?? '');
   const chunks = [];
   let remaining = source;
+
   while (remaining.length > maxLength) {
     let cut = maxLength;
+
     const sentenceEnd = Math.max(
       remaining.lastIndexOf('. ', maxLength),
       remaining.lastIndexOf('؟ ', maxLength),
@@ -897,85 +1058,123 @@ function splitTextForTranslation(text, maxLength = 400) {
       remaining.lastIndexOf('، ', maxLength),
       remaining.lastIndexOf('\n', maxLength)
     );
-    if (sentenceEnd > maxLength * 0.4) {
+
+    if (sentenceEnd > maxLength * 0.5) {
       cut = sentenceEnd + 1;
     } else {
       const space = remaining.lastIndexOf(' ', maxLength);
-      if (space > maxLength * 0.4) {
+
+      if (space > maxLength * 0.5) {
         cut = space + 1;
       }
     }
+
     if (cut <= 0) cut = maxLength;
+
     chunks.push(remaining.slice(0, cut));
     remaining = remaining.slice(cut);
   }
+
   if (remaining.length) {
     chunks.push(remaining);
   }
+
   return chunks;
 }
+
 /* =========================================================
-   WHOLE ARTICLE TRANSLATION
+   WHOLE ARTICLE TRANSLATION - FAST PARALLEL VERSION
 ========================================================= */
 async function translateWholeArticle(content, lang) {
   const original = String(content ?? '');
+
   if (!original.trim() || lang === 'ar') {
     return original;
   }
+
   const cached = readCachedTranslation(lang, original);
+
   if (cached && isValidTranslation(original, cached)) {
     return cached;
   }
-  const chunks = splitTextForTranslation(original, 400);
+
+  const chunks = splitTextForTranslation(original, 3000);
+
   if (!chunks.length) return original;
-  const translatedChunks = [];
-  let anyTranslated = false;
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk.trim()) {
-      translatedChunks.push(chunk);
-      continue;
-    }
-    const chunkCached = readCachedTranslation(lang, chunk);
-    if (chunkCached && isValidTranslation(chunk, chunkCached)) {
-      translatedChunks.push(chunkCached);
-      anyTranslated = true;
-      continue;
-    }
-    let translated = await requestTranslation(chunk, lang);
-    if (!translated || !isValidTranslation(chunk, translated)) {
-      await sleep(600);
-      translated = await requestTranslation(chunk, lang, 1);
-    }
-    if (translated && isValidTranslation(chunk, translated)) {
-      writeCachedTranslation(lang, chunk, translated);
-      translatedChunks.push(translated);
-      anyTranslated = true;
-    } else {
-      translatedChunks.push(chunk);
-    }
-    if (i < chunks.length - 1) {
-      await sleep(180);
+
+  const translatedChunks = new Array(chunks.length);
+  let nextIndex = 0;
+
+  const concurrency = Math.min(3, chunks.length);
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex++;
+
+      if (currentIndex >= chunks.length) return;
+
+      const chunk = chunks[currentIndex];
+
+      if (!chunk.trim()) {
+        translatedChunks[currentIndex] = chunk;
+        continue;
+      }
+
+      const chunkCached = readCachedTranslation(lang, chunk);
+
+      if (chunkCached && isValidTranslation(chunk, chunkCached)) {
+        translatedChunks[currentIndex] = chunkCached;
+        continue;
+      }
+
+      const translated = await requestTranslation(chunk, lang, 1);
+
+      if (
+        translated &&
+        isValidTranslation(chunk, translated)
+      ) {
+        writeCachedTranslation(lang, chunk, translated);
+        translatedChunks[currentIndex] = translated;
+      } else {
+        translatedChunks[currentIndex] = chunk;
+
+        console.error(
+          'Translation failed for chunk:',
+          currentIndex + 1
+        );
+      }
     }
   }
-  if (!anyTranslated) {
-    return original;
-  }
+
+  await Promise.all(
+    Array.from(
+      { length: concurrency },
+      () => worker()
+    )
+  );
+
   const result = translatedChunks.join('');
+
   if (!isValidTranslation(original, result)) {
     return original;
   }
+
   writeCachedTranslation(lang, original, result);
+
   return result;
 }
+
 /* =========================================================
    SAFE DOM TRANSLATION
 ========================================================= */
 function shouldSkipTranslationNode(node) {
   if (!node || !node.parentElement) return true;
+
   const parent = node.parentElement;
   const text = node.textContent || '';
+
   if (!text.trim()) return true;
+
   if (
     parent.closest(
       'script,style,noscript,textarea,input,select,option,svg,code,pre'
@@ -983,6 +1182,7 @@ function shouldSkipTranslationNode(node) {
   ) {
     return true;
   }
+
   if (
     parent.closest(
       '#languageSelect,.brand,footer .foot-logo,' +
@@ -991,75 +1191,102 @@ function shouldSkipTranslationNode(node) {
   ) {
     return true;
   }
+
   return false;
 }
+
 function collectTranslatableTextNodes() {
   const nodes = [];
+
   const walker = document.createTreeWalker(
     document.body,
     NodeFilter.SHOW_TEXT
   );
+
   let node;
+
   while ((node = walker.nextNode())) {
     if (!shouldSkipTranslationNode(node)) {
       nodes.push(node);
     }
   }
+
   return nodes;
 }
+
 let CC_TRANSLATION_RUN = 0;
+
 async function applyLanguageToDom(lang) {
   const runId = ++CC_TRANSLATION_RUN;
+
   applyHtmlDirection(lang);
+
   const select = $('#languageSelect');
+
   if (select && select.value !== lang) {
     select.value = lang;
   }
+
   const nodes = collectTranslatableTextNodes();
+
   if (lang === 'ar') {
     nodes.forEach(node => {
       const authorEl = node.parentElement?.hasAttribute('data-author-name')
         ? node.parentElement
         : node.parentElement?.closest('[data-author-name]');
+
       if (authorEl && authorEl.dataset.arName) {
         node.textContent = authorEl.dataset.arName;
         return;
       }
+
       const original = CC_ORIGINAL_TEXT_NODES.get(node);
+
       if (original !== undefined) {
         node.textContent = original;
       }
     });
+
     return;
   }
+
   const batch = nodes.map(node => {
     const authorEl = node.parentElement?.hasAttribute('data-author-name')
       ? node.parentElement
       : node.parentElement?.closest('[data-author-name]');
+
     if (!CC_ORIGINAL_TEXT_NODES.has(node)) {
       const baseText = (authorEl && authorEl.dataset.arName)
         ? authorEl.dataset.arName
         : node.textContent;
+
       CC_ORIGINAL_TEXT_NODES.set(node, baseText);
     }
+
     return {
       node,
       source: CC_ORIGINAL_TEXT_NODES.get(node),
       parent: node.parentElement
     };
   });
+
   let index = 0;
   const concurrency = 3;
+
   async function worker() {
     while (index < batch.length) {
       if (runId !== CC_TRANSLATION_RUN) return;
+
       const current = batch[index++];
+
       if (!current.node.isConnected) continue;
+
       const translated = await translateText(
         current.source,
         lang,
         current.parent
       );
+
       if (
         runId === CC_TRANSLATION_RUN &&
         getCurrentLang() === lang &&
@@ -1069,50 +1296,69 @@ async function applyLanguageToDom(lang) {
       }
     }
   }
+
   await Promise.all(
     Array.from({ length: concurrency }, worker)
   );
 }
+
 /* =========================================================
    LANGUAGE SWITCHER
 ========================================================= */
 function initLanguageSwitcher() {
   clearOldTranslationCache();
+
   const select = $('#languageSelect');
   const initialLang = getCurrentLang();
+
   applyHtmlDirection(initialLang);
+
   if (!select) return;
+
   select.value = initialLang;
+
   select.onchange = async () => {
     const chosen = ['fr', 'en'].includes(select.value)
       ? select.value
       : 'ar';
+
     try {
       localStorage.setItem(CC_LANG_KEY, chosen);
     } catch (e) {}
+
     await applyLanguageToDom(chosen);
+
     const reader = document.getElementById('ccArticleReader');
+
     if (reader && reader.classList.contains('is-open')) {
       const article = window.__CC_OPEN_ARTICLE__;
+
       if (article) {
         await openArticle(article.id, true);
       }
     }
   };
 }
+
 /* =========================================================
    OPEN ARTICLE
 ========================================================= */
 let CC_OPEN_ARTICLE_REQUEST = 0;
+
 async function openArticle(id, keepReaderOpen = false) {
   createArticleReader();
+
   const requestId = ++CC_OPEN_ARTICLE_REQUEST;
   const articles = window.__CC_ARTICLES__ || [];
+
   const article = articles.find(
     x => String(x.id) === String(id)
   );
+
   if (!article) return;
+
   window.__CC_OPEN_ARTICLE__ = article;
+
   if (!keepReaderOpen) {
     Promise.resolve(
       db.rpc('increment_views', {
@@ -1124,10 +1370,13 @@ async function openArticle(id, keepReaderOpen = false) {
           console.error('View counter:', result.error);
           return;
         }
+
         article.views = (Number(article.views) || 0) + 1;
+
         const badge = document.querySelector(
           '.cc-article-date .views'
         );
+
         if (
           badge &&
           window.__CC_OPEN_ARTICLE__?.id === article.id
@@ -1140,9 +1389,12 @@ async function openArticle(id, keepReaderOpen = false) {
       })
       .catch(() => {});
   }
+
   const target = document.getElementById('ccArticleContent');
   if (!target) return;
+
   const lang = getCurrentLang();
+
   target.innerHTML = `
     <div class="cc-no-content">
       ${
@@ -1154,14 +1406,18 @@ async function openArticle(id, keepReaderOpen = false) {
       }
     </div>
   `;
+
   let articleContent = String(article.content || '');
+
   if (lang !== 'ar' && articleContent.trim()) {
     articleContent = await translateWholeArticle(
       articleContent,
       lang
     );
   }
+
   if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
+
   const [translatedTitle, translatedCategory] = lang === 'ar'
     ? [
         article.title || '',
@@ -1174,23 +1430,31 @@ async function openArticle(id, keepReaderOpen = false) {
           lang
         )
       ]);
+
   if (requestId !== CC_OPEN_ARTICLE_REQUEST) return;
+
   const paragraphs = articleParagraphs(articleContent);
   const authorImage = safeUrl(article.author_image);
   const image1 = safeUrl(article.image_1);
   const image2 = safeUrl(article.image_2);
   const image3 = safeUrl(article.image_3);
+
   const total = paragraphs.length;
   let middleIndex = Math.ceil(total / 2);
+
   if (total <= 2) middleIndex = 1;
+
   let body = '';
+
   paragraphs.forEach((paragraph, index) => {
     if (image2 && index === middleIndex) {
       body += articleImage(image2, translatedTitle);
     }
+
     if (image3 && index === total - 1) {
       body += articleImage(image3, translatedTitle);
     }
+
     body += `
       <p class="cc-p"
         ${
@@ -1202,6 +1466,7 @@ async function openArticle(id, keepReaderOpen = false) {
       </p>
     `;
   });
+
   if (!paragraphs.length) {
     body = `
       <div class="cc-no-content">
@@ -1217,21 +1482,27 @@ async function openArticle(id, keepReaderOpen = false) {
       ${image3 ? articleImage(image3, translatedTitle) : ''}
     `;
   }
+
   const rawAuthor = String(article.author || '').trim();
+
   const displayAuthor = rawAuthor
     ? (lang === 'ar' ? rawAuthor : transliterateArabicName(rawAuthor))
     : '';
+
   const authorPlaceholder = displayAuthor
     ? displayAuthor.slice(0, 1)
     : (lang === 'ar' ? 'ك' : 'C');
+
   const authorLabel = lang === 'fr'
     ? 'Comité de rédaction'
     : lang === 'en'
       ? 'Editorial team'
       : 'هيئة التحرير';
+
   const dateLabel = article.created_at
     ? formatArticleDate(article.created_at, lang)
     : '';
+
   target.innerHTML = `
     <div class="cc-article-category">
       ${esc(translatedCategory)}
@@ -1264,26 +1535,37 @@ async function openArticle(id, keepReaderOpen = false) {
     }
     ${shareBar(article, lang)}
   `;
+
   const reader = document.getElementById('ccArticleReader');
+
   reader.classList.add('is-open');
   document.body.classList.add('cc-reader-open');
+
   reader.scrollTop = 0;
+
   bindShareCopy(article, lang);
+
   const hash = '#article-' + encodeURIComponent(article.id);
+
   if (!keepReaderOpen && location.hash !== hash) {
     history.replaceState(null, '', location.pathname + hash);
   }
 }
+
 /* =========================================================
    CLOSE ARTICLE
 ========================================================= */
 function closeArticle() {
   const reader = document.getElementById('ccArticleReader');
   if (!reader) return;
+
   ++CC_OPEN_ARTICLE_REQUEST;
+
   reader.classList.remove('is-open');
   document.body.classList.remove('cc-reader-open');
+
   window.__CC_OPEN_ARTICLE__ = null;
+
   if (location.hash.startsWith('#article-')) {
     history.replaceState(
       null,
@@ -1292,18 +1574,22 @@ function closeArticle() {
     );
   }
 }
+
 /* =========================================================
    DATE
 ========================================================= */
 function formatArticleDate(value, lang = getCurrentLang()) {
   try {
     const date = new Date(value);
+
     if (Number.isNaN(date.getTime())) return '';
+
     const locale = lang === 'fr'
       ? 'fr-FR'
       : lang === 'en'
         ? 'en-GB'
         : 'ar-DZ';
+
     return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'long',
@@ -1313,32 +1599,39 @@ function formatArticleDate(value, lang = getCurrentLang()) {
     return '';
   }
 }
+
 /* =========================================================
    OPEN ARTICLE FROM SHARED LINK
 ========================================================= */
 function openArticleFromHash() {
   const hash = location.hash || '';
   let id = '';
+
   if (hash.startsWith('#article-')) {
     id = hash.slice(9);
   } else {
     id = new URLSearchParams(location.search).get('a') || '';
   }
+
   try {
     id = decodeURIComponent(id);
   } catch (e) {}
+
   if (id) openArticle(id);
 }
+
 /* =========================================================
    ARCHIVE PAGES
 ========================================================= */
 async function renderArchivePage(mode) {
   const params = new URLSearchParams(location.search);
+
   const key = (
     mode === 'section'
       ? params.get('slug')
       : params.get('name')
   ) || '';
+
   const [sections, articles, settings] = await Promise.all([
     get('sections', 'sort_order', true),
     get('articles', 'sort_order', true),
@@ -1351,6 +1644,7 @@ async function renderArchivePage(mode) {
           console.error('Supabase settings:', r.error);
           return null;
         }
+
         return r.data || null;
       })
       .catch(e => {
@@ -1358,26 +1652,35 @@ async function renderArchivePage(mode) {
         return null;
       })
   ]);
+
   const titleTarget = $('#pageTitle');
   const descTarget = $('#pageDesc');
   const target = $('#pageArticles');
+
   if (!titleTarget || !target) return;
+
   const wanted = normalizeName(key);
   let list = articles.filter(x => x.visible !== false);
+
   if (mode === 'section') {
     const match = sections.find(
       s => normalizeName(s.name) === wanted
     );
+
     list = list.filter(x =>
       categoryBelongsToSection(x.category, key)
     );
+
     titleTarget.textContent = match ? match.name : key;
+
     if (descTarget) {
       descTarget.textContent = match
         ? (match.description || '')
         : '';
     }
+
     const eyebrow = $('#pageEyebrow');
+
     if (eyebrow) {
       eyebrow.textContent = 'قسم';
     }
@@ -1385,74 +1688,98 @@ async function renderArchivePage(mode) {
     list = list.filter(
       x => normalizeName(x.author) === wanted
     );
+
     const cleanAuthor = key || 'كاتب';
+
     titleTarget.textContent = cleanAuthor;
     titleTarget.setAttribute('data-author-name', '1');
     titleTarget.setAttribute('data-ar-name', cleanAuthor);
+
     if (descTarget) {
       descTarget.textContent = '';
     }
+
     const eyebrow = $('#pageEyebrow');
+
     if (eyebrow) {
       eyebrow.textContent = 'كاتب';
     }
   }
+
   document.title = titleTarget.textContent + ' | ضد السينما';
+
   createArticleReader();
   applySiteSettings(settings);
+
   if (!list.length) {
     window.__CC_ARTICLES__ = [];
+
     target.innerHTML = `
       <div class="empty">
         لا توجد مقالات منشورة هنا بعد.
       </div>
     `;
+
     return;
   }
+
   window.__CC_ARTICLES__ = list;
   target.innerHTML = list.map(articleCard).join('');
+
   bindArticleClicks(target);
   openArticleFromHash();
 }
+
 /* =========================================================
    SITE SETTINGS
 ========================================================= */
 function applySiteSettings(settings) {
   if (!settings) return;
+
   if (settings.accent_color) {
     document.documentElement.style.setProperty(
       '--red',
       settings.accent_color
     );
   }
+
   const footNote = $('#footNote');
+
   if (footNote && settings.footer_note) {
     footNote.textContent = settings.footer_note;
   }
 }
+
 /* =========================================================
    MAIN
 ========================================================= */
 async function main() {
   initLanguageSwitcher();
+
   const path = location.pathname;
   const qs = new URLSearchParams(location.search);
   const isArchive = !!$('#pageArticles');
+
   const isAuthor =
     /\/author(\.html)?\/?$/.test(path) ||
     (qs.has('name') && !qs.has('slug'));
+
   if (isArchive) {
     await renderArchivePage(isAuthor ? 'author' : 'section');
     await applyLanguageToDom(getCurrentLang());
+
     if (!window.__CC_HASH_LISTENER__) {
       window.__CC_HASH_LISTENER__ = true;
+
       window.addEventListener(
         'hashchange',
         openArticleFromHash
       );
     }
+
     return;
   }
+
   const [
     issues,
     sections,
@@ -1473,71 +1800,101 @@ async function main() {
       .then(r => r.data || null)
       .catch(() => null)
   ]);
+
   const all = issues.length
     ? issues
     : fallbackIssues;
+
   renderIssues(all);
   renderSections(sections);
+
   renderArticles(
     articles.filter(x => x.visible !== false)
   );
+
   renderTeam(team);
   renderEditors(editors);
+
   let current = settings?.current_issue_id
     ? issues.find(
         x => x.id === settings.current_issue_id
       )
     : null;
+
   if (!current) {
     current = issues[0] || null;
   }
+
   renderCurrent(current);
+
   if (settings) {
     if (settings.site_name) {
       document.title = settings.site_name;
     }
+
     if (settings.hero_title && $('#heroTitle')) {
       $('#heroTitle').textContent = settings.hero_title;
     }
+
     if (settings.hero_subtitle && $('#heroDesc')) {
       $('#heroDesc').textContent = settings.hero_subtitle;
     }
+
     if (settings.about_title && $('#aboutTitle')) {
       $('#aboutTitle').textContent = settings.about_title;
     }
+
     if (settings.about_text && $('#aboutText')) {
       $('#aboutText').textContent = settings.about_text;
     }
+
     if (settings.about_text_2 && $('#aboutText2')) {
       $('#aboutText2').textContent = settings.about_text_2;
     }
+
     if (settings.contact_email && $('#contactEmail')) {
       $('#contactEmail').href =
         'mailto:' + settings.contact_email;
+
       $('#contactEmail').textContent =
         settings.contact_email;
     }
   }
+
   applySiteSettings(settings);
   createArticleReader();
   openArticleFromHash();
+
   await applyLanguageToDom(getCurrentLang());
+
   if (!window.__CC_HASH_LISTENER__) {
     window.__CC_HASH_LISTENER__ = true;
+
     window.addEventListener(
       'hashchange',
       openArticleFromHash
     );
   }
 }
+
 /* =========================================================
    VIEWS
 ========================================================= */
-const CC_VIEWS = ['sections', 'articles', 'team', 'editors', 'about', 'contact'];
+const CC_VIEWS = [
+  'sections',
+  'articles',
+  'team',
+  'editors',
+  'about',
+  'contact'
+];
+
 function ccMarkHomeOnly() {
   const cur = document.getElementById('currentIssue');
   if (!cur) return;
+
   const box = cur.closest('section') || cur.parentElement;
+
   if (
     box &&
     !['issues', 'home'].includes(box.id) &&
@@ -1546,27 +1903,40 @@ function ccMarkHomeOnly() {
     box.setAttribute('data-home-only', '');
   }
 }
+
 function ccApplyView() {
   let h = (location.hash || '').slice(1);
+
   try {
     h = decodeURIComponent(h);
   } catch (e) {}
+
   if (h.startsWith('article-')) return;
+
   const root = document.documentElement;
   const view = CC_VIEWS.includes(h) ? h : 'home';
   const changed = root.getAttribute('data-view') !== view;
+
   root.setAttribute('data-view', view);
+
   if (!changed) return;
-  const target = view === 'home' && h ? document.getElementById(h) : null;
+
+  const target = view === 'home' && h
+    ? document.getElementById(h)
+    : null;
+
   if (target) {
     target.scrollIntoView();
   } else {
     window.scrollTo(0, 0);
   }
 }
+
 ccMarkHomeOnly();
 ccApplyView();
+
 window.addEventListener('hashchange', ccApplyView);
+
 /* =========================================================
    START
 ========================================================= */
