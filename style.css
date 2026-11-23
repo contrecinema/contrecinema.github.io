@@ -76,7 +76,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 /* ============ تنسيق الفيديو السينمائي واستدارة فنية ============ */
 .hero-video-container {
   width: min(1180px, calc(100% - 40px));
-  margin: 18px auto 14px auto;
+  margin: 14px auto 6px auto;
   height: 240px;
   border-radius: 18px;
   overflow: hidden;
@@ -96,18 +96,18 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 
 .hero-box-wrapper {
   width: min(1180px, calc(100% - 40px));
-  margin: 0 auto 24px auto;
+  margin: 0 auto 20px auto;
   background-color: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 8px 0 22px 0;
+  padding: 0 0 16px 0;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
 }
 
 .hero-box-wrapper .hero {
   border-bottom: none;
   min-height: auto;
-  padding: 20px 0;
+  padding: 6px 0;
 }
 
 /* ============ أرشيف الأعداد - شريط أفقي ============ */
@@ -202,7 +202,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 28px 34px 24px;
+  padding: 20px 26px 18px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
 }
 
@@ -211,7 +211,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 }
 
 .hero-text-panel h1 {
-  margin: 12px 0;
+  margin: 10px 0;
 }
 
 .hero-text-panel p {
@@ -220,12 +220,13 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 
 .hero-actions {
   margin-top: 0;
-  padding: 18px 0 28px;
+  padding: 14px 0 22px;
 }
 
 @media (max-width: 560px) {
   .hero-video-container {
     width: min(100% - 24px, 1180px);
+    margin: 12px auto 6px auto;
     border-radius: 16px;
   }
 
@@ -240,12 +241,12 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
 
   .hero-text-panel {
     border-radius: 16px;
-    padding: 20px 18px 18px;
+    padding: 16px 16px 14px;
   }
 
   .hero-text-panel h1 {
     font-size: 36px;
-    margin: 10px 0;
+    margin: 8px 0;
   }
 
   .hero-text-panel p {
@@ -253,7 +254,7 @@ html[data-theme="dark"] .theme-toggle .i-moon{opacity:1;transform:rotate(0deg) s
   }
 
   .hero-actions {
-    padding: 15px 0 22px;
+    padding: 12px 0 18px;
   }
 }
 
