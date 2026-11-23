@@ -691,10 +691,10 @@ function bindShareCopy(article, lang = 'ar') {
 }
 
 /* =========================================================
-   MULTILINGUAL SYSTEM (PRIORITY ABOVE-THE-FOLD + RETRY)
+   MULTILINGUAL SYSTEM (BATCHED + PRIORITY + RETRY)
 ========================================================= */
 const CC_LANG_KEY = 'cc-lang';
-const CC_CACHE_PREFIX = 'cc_tr_v12_';
+const CC_CACHE_PREFIX = 'cc_tr_v13_';
 const CC_MEMORY_CACHE = new Map();
 const CC_INFLIGHT_REQUESTS = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
@@ -994,6 +994,102 @@ async function requestTranslation(text, targetLang, retries = 2) {
   return promise;
 }
 
+/* ---------- BATCH: عدة نصوص في طلب واحد (بدون تعديل الدالة) ---------- */
+const CC_BATCH_SEP = '\n@@@\n';
+
+async function requestBatch(texts, lang) {
+  if (!texts.length) return [];
+  const joined = texts.join(CC_BATCH_SEP);
+  const out = await requestTranslationOnce(joined, lang, 25000);
+  if (!out) return null;
+  const parts = out.split(/\s*@@@\s*/).map(s => s.trim());
+  return parts.length === texts.length ? parts : null;
+}
+
+function makeBatches(unique, firstSize = 8, size = 10, maxChars = 1200) {
+  const batches = [];
+  let cur = [];
+  let chars = 0;
+  let limit = firstSize;
+  for (const t of unique) {
+    if (cur.length && (cur.length >= limit || chars + t.length > maxChars)) {
+      batches.push(cur);
+      cur = [];
+      chars = 0;
+      limit = size;
+    }
+    cur.push(t);
+    chars += t.length;
+  }
+  if (cur.length) batches.push(cur);
+  return batches;
+}
+
+/*
+  يترجم قائمة نصوص فريدة بالدفعات.
+  alive(): هل ما زالت العملية صالحة؟
+  apply(src, translated): تطبيق الترجمة على الصفحة
+*/
+async function translateUnique(unique, lang, alive, apply) {
+  if (!unique.length) return;
+  const batches = makeBatches(unique);
+
+  async function doBatch(batch) {
+    let remaining = batch;
+    for (let a = 0; a < 2 && remaining.length; a++) {
+      if (!alive()) return;
+      const out = await requestBatch(remaining, lang);
+      if (out) {
+        const next = [];
+        remaining.forEach((src, k) => {
+          const tr = String(out[k] || '').trim();
+          if (isValidTranslation(src, tr)) {
+            writeCachedTranslation(lang, src, tr);
+            apply(src, tr);
+          } else {
+            next.push(src);
+          }
+        });
+        remaining = next;
+        break;
+      }
+      await sleep(500 * (a + 1));
+    }
+
+    // احتياطي: ما فشل في الدفعة يُترجم فردياً (3 بالتوازي)
+    if (remaining.length) {
+      let idx = 0;
+      const workers = Array.from(
+        { length: Math.min(3, remaining.length) },
+        async () => {
+          while (idx < remaining.length) {
+            if (!alive()) return;
+            const src = remaining[idx++];
+            const tr = await requestTranslation(src, lang, 1);
+            if (isValidTranslation(src, tr)) {
+              writeCachedTranslation(lang, src, tr);
+              apply(src, tr);
+            }
+          }
+        }
+      );
+      await Promise.all(workers);
+    }
+  }
+
+  // الدفعة الأولى وحدها لتظهر الشاشة مترجمة بسرعة، ثم الباقي بتوازي 2
+  await doBatch(batches[0]);
+  let b = 1;
+  await Promise.all(
+    Array.from({ length: Math.min(2, Math.max(0, batches.length - 1)) }, async () => {
+      while (b < batches.length) {
+        if (!alive()) return;
+        await doBatch(batches[b++]);
+      }
+    })
+  );
+}
+
 async function translateText(text, targetLang, el = null, retries = 2) {
   const original = String(text ?? '');
   const clean = original.trim();
@@ -1157,13 +1253,55 @@ function collectTranslatableTextNodes() {
       nodes.push(node);
     }
   }
-  // ترتيب العناصر بحيث تُترجم العناصر الظاهرة في الشاشة أولاً
-  nodes.sort((a, b) => {
-    const aVis = isNearViewport(a.parentElement) ? 0 : 1;
-    const bVis = isNearViewport(b.parentElement) ? 0 : 1;
-    return aVis - bVis;
+  // نحسب الظهور مرة واحدة لكل عقدة ثم نرتب (الظاهر أولاً)
+  const withVis = nodes.map(n => ({
+    n,
+    v: isNearViewport(n.parentElement) ? 0 : 1
+  }));
+  withVis.sort((a, b) => a.v - b.v);
+  return withVis.map(x => x.n);
+}
+
+/* ---------- عناوين وتصنيفات البطاقات أولاً ---------- */
+async function translateCardsFirst(lang, runId) {
+  const alive = () => runId === CC_TRANSLATION_RUN && getCurrentLang() === lang;
+  const els = [...document.querySelectorAll(
+    '.article-card h3, .article-card .cat, .section-card b, .section-card p'
+  )];
+
+  const items = [];
+  for (const el of els) {
+    if (el.closest('#ccArticleReader')) continue;
+    const node = el.firstChild;
+    if (!node || node.nodeType !== 3) continue;
+    if (!CC_ORIGINAL_TEXT_NODES.has(node)) {
+      CC_ORIGINAL_TEXT_NODES.set(node, node.textContent);
+    }
+    const source = CC_ORIGINAL_TEXT_NODES.get(node);
+    const clean = String(source ?? '').trim();
+    if (!clean || !/[\u0600-\u06FF]/.test(clean)) continue;
+    items.push({ node, source, clean });
+  }
+
+  const todo = [];
+  for (const it of items) {
+    const hit = readCachedTranslation(lang, it.clean);
+    if (hit !== null) {
+      it.node.textContent = it.source.replace(it.clean, hit);
+    } else {
+      todo.push(it);
+    }
+  }
+  if (!todo.length) return;
+
+  const unique = [...new Set(todo.map(x => x.clean))];
+  await translateUnique(unique, lang, alive, (src, tr) => {
+    todo.forEach(x => {
+      if (x.clean === src && x.node.isConnected) {
+        x.node.textContent = x.source.replace(x.clean, tr);
+      }
+    });
   });
-  return nodes;
 }
 
 let CC_TRANSLATION_RUN = 0;
@@ -1174,6 +1312,13 @@ async function applyLanguageToDom(lang) {
   const select = $('#languageSelect');
   if (select && select.value !== lang) {
     select.value = lang;
+  }
+
+  const alive = () => runId === CC_TRANSLATION_RUN && getCurrentLang() === lang;
+
+  if (lang !== 'ar') {
+    await translateCardsFirst(lang, runId);
+    if (!alive()) return;
   }
 
   const nodes = collectTranslatableTextNodes();
@@ -1225,55 +1370,39 @@ async function applyLanguageToDom(lang) {
       continue;
     }
 
-    pending.push({
-      node,
-      source,
-      parent: node.parentElement
-    });
+    pending.push({ node, source, clean });
   }
 
   if (!pending.length) return;
 
-  async function runQueue(items, concurrency, retries) {
-    let index = 0;
-    async function worker() {
-      while (index < items.length) {
-        if (runId !== CC_TRANSLATION_RUN || getCurrentLang() !== lang) return;
-        const current = items[index++];
-        if (!current.node.isConnected) continue;
-
-        const translated = await translateText(
-          current.source,
-          lang,
-          current.parent,
-          retries
-        );
-
-        if (
-          runId === CC_TRANSLATION_RUN &&
-          getCurrentLang() === lang &&
-          current.node.isConnected
-        ) {
-          current.node.textContent = translated;
-        }
-      }
-    }
-    await Promise.all(
-      Array.from({ length: Math.min(concurrency, items.length) }, worker)
-    );
+  const groups = new Map();
+  for (const it of pending) {
+    if (!groups.has(it.clean)) groups.set(it.clean, []);
+    groups.get(it.clean).push(it);
   }
 
-  // جولة أولى بتوازي معتدل لتجنب ضغط السيرفر
-  await runQueue(pending, 4, 2);
+  const applyToGroup = (src, tr) => {
+    const list = groups.get(src) || [];
+    for (const it of list) {
+      if (it.node.isConnected && alive()) {
+        it.node.textContent = it.source.replace(it.clean, tr);
+      }
+    }
+  };
 
-  // إعادة محاولة للعناوين والنصوص التي بقيت عربية بعد الجولة الأولى
-  if (runId === CC_TRANSLATION_RUN && getCurrentLang() === lang) {
-    const leftover = pending.filter(
-      it => it.node.isConnected && /[\u0600-\u06FF]/.test(it.node.textContent || '')
+  // الجولة الأولى (pending مرتب: الظاهر أولاً)
+  await translateUnique([...groups.keys()], lang, alive, applyToGroup);
+
+  // جولة إعادة محاولة لما بقي عربياً
+  if (alive()) {
+    const leftover = [...groups.keys()].filter(src =>
+      groups.get(src).some(
+        it => it.node.isConnected && /[\u0600-\u06FF]/.test(it.node.textContent || '')
+      )
     );
     if (leftover.length) {
-      await sleep(250);
-      await runQueue(leftover, 3, 2);
+      await sleep(800);
+      await translateUnique(leftover, lang, alive, applyToGroup);
     }
   }
 }
