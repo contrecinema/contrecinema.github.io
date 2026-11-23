@@ -73,9 +73,13 @@ function categoryBelongsToSection(category, sectionName) {
 
   const names = aliases[section] || [section];
 
+  // يقبل: «مراجعات - العدد 11» و«مراجعات-العدد» و«مراجعات: ...» وغيرها
   return names.some(name =>
-    cat.startsWith(name + ' -') ||
-    cat.startsWith(name + ' ')
+    cat === name ||
+    (
+      cat.startsWith(name) &&
+      /^[\s\-–—:|،]/.test(cat.slice(name.length))
+    )
   );
 }
 
@@ -174,14 +178,21 @@ const fallbackSections = [
 
 async function get(table, order = 'created_at', ascending = false) {
   try {
-    const r = await db
+    let r = await db
       .from(table)
       .select('*')
       .order(order, { ascending });
 
     if (r.error) {
       console.error(`Supabase ${table}:`, r.error);
-      return [];
+
+      // محاولة ثانية بدون ترتيب (في حال كان عمود الترتيب غير موجود)
+      r = await db.from(table).select('*');
+
+      if (r.error) {
+        console.error(`Supabase ${table} (no order):`, r.error);
+        return [];
+      }
     }
 
     return r.data || [];
@@ -1783,7 +1794,6 @@ async function renderArchivePage(mode) {
       s => normalizeName(s.name) === wanted
     );
 
-    // التعديل الأساسي:
     // إظهار المقالات التي يبدأ تصنيفها باسم القسم،
     // حتى عندما يحتوي التصنيف على اسم العدد.
     list = list.filter(x =>
@@ -1880,16 +1890,18 @@ async function main() {
   initLanguageSwitcher();
 
   const path = location.pathname;
+  const qs = new URLSearchParams(location.search);
 
-  if (
-    path.endsWith('section.html') ||
-    path.endsWith('author.html')
-  ) {
-    await renderArchivePage(
-      path.endsWith('section.html')
-        ? 'section'
-        : 'author'
-    );
+  // صفحة أرشيف (قسم أو كاتب): نعرفها بوجود #pageArticles
+  // بدل الاعتماد على شكل الرابط (section.html أو /section)
+  const isArchive = !!$('#pageArticles');
+
+  const isAuthor =
+    /\/author(\.html)?\/?$/.test(path) ||
+    (qs.has('name') && !qs.has('slug'));
+
+  if (isArchive) {
+    await renderArchivePage(isAuthor ? 'author' : 'section');
 
     await applyLanguageToDom(getCurrentLang());
 
