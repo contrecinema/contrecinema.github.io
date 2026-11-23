@@ -991,9 +991,10 @@ async function flushShare() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
-async function requestTranslationOnce(text, targetLang, timeoutMs = 14000) {
+async function requestTranslationOnce(text, targetLang, timeoutMs = 0) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
+  if (!timeoutMs) timeoutMs = Math.max(15000, 8000 + clean.length * 25);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -1037,7 +1038,7 @@ async function requestTranslation(text, targetLang, retries = 2) {
       const out = await requestTranslationOnce(clean, targetLang);
       if (out) return out;
       if (attempt < retries) {
-        await sleep(200 * (attempt + 1));
+        await sleep(700 * (attempt + 1));
       }
     }
     return '';
@@ -1093,62 +1094,22 @@ function makeBatches(unique, firstSize = 8, size = 10, maxChars = 1200) {
 */
 async function translateUnique(unique, lang, alive, apply) {
   if (!unique.length) return;
-  const batches = makeBatches(unique);
-
-  async function doBatch(batch) {
-    let remaining = batch;
-    for (let a = 0; a < 2 && remaining.length && !(CC_BATCH_BROKEN && remaining.length > 1); a++) {
-      if (!alive()) return;
-      const out = await requestBatch(remaining, lang);
-      if (out) {
-        const next = [];
-        remaining.forEach((src, k) => {
-          const tr = String(out[k] || '').trim();
-          if (isValidTranslation(src, tr)) {
-            writeCachedTranslation(lang, src, tr);
-            apply(src, tr);
-          } else {
-            next.push(src);
-          }
-        });
-        remaining = next;
-        break;
-      }
-      await sleep(500 * (a + 1));
-    }
-
-    // احتياطي: ما فشل في الدفعة يُترجم فردياً (3 بالتوازي)
-    if (remaining.length) {
-      let idx = 0;
-      const workers = Array.from(
-        { length: Math.min(3, remaining.length) },
-        async () => {
-          while (idx < remaining.length) {
-            if (!alive()) return;
-            const src = remaining[idx++];
-            const tr = await requestTranslation(src, lang, 1);
-            if (isValidTranslation(src, tr)) {
-              writeCachedTranslation(lang, src, tr);
-              apply(src, tr);
-            }
-          }
-        }
-      );
-      await Promise.all(workers);
-    }
-  }
-
-  // الدفعة الأولى وحدها لتظهر الشاشة مترجمة بسرعة، ثم الباقي بتوازي 2
-  await doBatch(batches[0]);
-  let b = 1;
-  await Promise.all(
-    Array.from({ length: Math.min(2, Math.max(0, batches.length - 1)) }, async () => {
-      while (b < batches.length) {
+  let idx = 0;
+  const workers = Array.from(
+    { length: Math.min(5, unique.length) },
+    async () => {
+      while (idx < unique.length) {
         if (!alive()) return;
-        await doBatch(batches[b++]);
+        const src = unique[idx++];
+        const tr = await requestTranslation(src, lang, 2);
+        if (isValidTranslation(src, tr)) {
+          writeCachedTranslation(lang, src, tr);
+          apply(src, tr);
+        }
       }
-    })
+    }
   );
+  await Promise.all(workers);
 }
 
 async function translateText(text, targetLang, el = null, retries = 2) {
@@ -1222,13 +1183,13 @@ async function translateWholeArticle(content, lang) {
     return cached;
   }
 
-  const chunks = splitTextForTranslation(original, 2200);
+  const chunks = splitTextForTranslation(original, 900);
   if (!chunks.length) return original;
 
   const translatedChunks = new Array(chunks.length);
   let anyTranslated = false;
   let index = 0;
-  const concurrency = 3;
+  const concurrency = 4;
 
   async function worker() {
     while (index < chunks.length) {
@@ -1432,17 +1393,6 @@ async function applyLanguageToDom(lang) {
     pending.push({ node, source, clean });
   }
 
-  if (!pending.length) return;
-
-  // عناوين البطاقات أولاً (بعد أن ظهر القاموس والكاش فوراً)
-  await translateCardsFirst(lang, runId);
-  if (!alive()) return;
-  for (let i = pending.length - 1; i >= 0; i--) {
-    const it = pending[i];
-    if (!it.node.isConnected || !/[\u0600-\u06FF]/.test(it.node.textContent || '')) {
-      pending.splice(i, 1);
-    }
-  }
   if (!pending.length) return;
 
   const groups = new Map();
