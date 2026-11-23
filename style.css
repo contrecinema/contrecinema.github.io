@@ -399,6 +399,42 @@ header #themeToggle,
   border-color: #F5EFE6 !important;
 }
 
+/* ===== تحسين وضوح الشعار داخل الشريط العلوي ===== */
+header .brand,
+.site-header .brand,
+.topbar .brand {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+header .brand-logo,
+.site-header .brand-logo,
+.topbar .brand-logo {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+header .brand small,
+.site-header .brand small,
+.topbar .brand small {
+  color: #FFF8EE !important;
+  opacity: 0.95;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  header .brand-logo,
+  .site-header .brand-logo,
+  .topbar .brand-logo {
+    height: 30px;
+  }
+  header .brand small,
+  .site-header .brand small,
+  .topbar .brand small {
+    font-size: 8.5px;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+}
+
 /* ===== قائمة الهاتف ===== */
 .hamb {
   color: #F5EFE6 !important;
