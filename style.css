@@ -367,86 +367,89 @@ body {
   top: 0 !important;
 }
 
-/* ===== الشريط العلوي (اللون المتوسط #8C6B4F) ===== */
+/* ===== الشريط العلوي (بني داكن دافئ #5A3F2B) ===== */
 header,
 .site-header,
-.topbar {
-  background: #8C6B4F !important;
-  color: #F5EFE6 !important;
-  border-bottom: 1px solid #6F533C !important;
+.topbar,
+.top {
+  background: #5A3F2B !important;
+  color: #FFF8EE !important;
+  border-bottom: 1px solid #3F2B1D !important;
 }
 
 header a,
 header .brand,
 .site-header a,
-.topbar a {
-  color: #F5EFE6 !important;
+.topbar a,
+.top a {
+  color: #FFF8EE !important;
 }
 
-header #languageSelect,
-.site-header #languageSelect,
-.topbar #languageSelect {
-  background: #6F533C !important;
-  color: #F5EFE6 !important;
-  border-color: #F5EFE6 !important;
-}
-
-header #themeToggle,
-.site-header #themeToggle,
-.topbar #themeToggle {
-  background: transparent !important;
-  color: #F5EFE6 !important;
-  border-color: #F5EFE6 !important;
-}
-
-/* ===== تحسين وضوح الشعار داخل الشريط العلوي ===== */
+/* إظهار اللوغو والنص الفرنسي أسفله بوضوح تام */
 header .brand,
 .site-header .brand,
-.topbar .brand {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+.topbar .brand,
+.top .brand {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
 }
 
 header .brand-logo,
 .site-header .brand-logo,
-.topbar .brand-logo {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+.topbar .brand-logo,
+.top .brand-logo {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55)) !important;
+}
+
+header .brand span,
+.site-header .brand span,
+.topbar .brand span,
+.top .brand span {
+  color: #FF4D3D !important;
+  opacity: 1 !important;
 }
 
 header .brand small,
 .site-header .brand small,
-.topbar .brand small {
+.topbar .brand small,
+.top .brand small {
   color: #FFF8EE !important;
-  opacity: 0.95;
-  font-weight: 600;
+  opacity: 1 !important;
 }
 
-@media (max-width: 560px) {
-  header .brand-logo,
-  .site-header .brand-logo,
-  .topbar .brand-logo {
-    height: 30px;
-  }
-  header .brand small,
-  .site-header .brand small,
-  .topbar .brand small {
-    font-size: 8.5px;
-    letter-spacing: 2px;
-    margin-top: 4px;
-  }
+header #languageSelect,
+.site-header #languageSelect,
+.topbar #languageSelect,
+.top #languageSelect {
+  background: #463020 !important;
+  color: #FFF8EE !important;
+  border-color: #FFF8EE !important;
+}
+
+header #themeToggle,
+.site-header #themeToggle,
+.topbar #themeToggle,
+.top #themeToggle {
+  background: transparent !important;
+  color: #FFF8EE !important;
+  border-color: #FFF8EE !important;
 }
 
 /* ===== قائمة الهاتف ===== */
 .hamb {
-  color: #F5EFE6 !important;
+  color: #FFF8EE !important;
 }
 
 @media (max-width: 900px) {
   nav {
-    background: #8C6B4F !important;
-    border-bottom: 1px solid #6F533C !important;
+    background: #5A3F2B !important;
+    border-bottom: 1px solid #3F2B1D !important;
   }
   nav a {
-    color: #F5EFE6 !important;
+    color: #FFF8EE !important;
   }
 }
 
