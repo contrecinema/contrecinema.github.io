@@ -710,6 +710,10 @@ const AUTHORS_LATIN_MAP = {
 
 const STATIC_UI_TRANSLATIONS = {
   fr: {
+    'من نحن': 'Qui sommes-nous',
+    'راسلنا': 'Nous écrire',
+    'نقرأ الفيلم، ونفكك الصورة': 'Nous lisons le film et déconstruisons l’image',
+    'ها نحن في العدد الحادي عشر، والحلم الجميل مستمر؛ نقف اليوم على أعتاب إتمام عام من هذه التجربة المستقلة التي تُدار بصفر دينار. لقد تمكّنا من جمع أهم الأقلام في النقد العربي، وفتحنا الباب أمام أقلام شابة بدأت تترك انطباعًا واعدًا، وتؤكد أنها تمثّل مستقبل الكتابة النقدية. نحن ملزمون بعهد أخلاقيّ، من خلال المجلة وموقعها الإلكتروني بمواصلة تقديم مادة مميزة وثرية لقارئنا، الذي نثق بأنه أصبح ينتظرنا على رأس كل شهر... وإنّا لقادمون إليه.': 'Nous voici au onzième numéro, et le beau rêve continue : nous sommes aujourd’hui au seuil d’une année complète de cette aventure indépendante, menée avec zéro dinar. Nous avons réussi à réunir les plus belles plumes de la critique arabe, tout en ouvrant la porte à de jeunes plumes qui commencent à laisser une impression prometteuse et confirment qu’elles représentent l’avenir de l’écriture critique. Nous sommes tenus par un engagement moral, à travers la revue et son site, de continuer à offrir un contenu distingué et riche à notre lecteur, qui, nous en sommes sûrs, nous attend désormais au début de chaque mois… et nous venons à lui.',
     'الرئيسية': 'Accueil',
     'الأقسام': 'Rubriques',
     'المقالات': 'Articles',
@@ -739,6 +743,10 @@ const STATIC_UI_TRANSLATIONS = {
     'كتابات ومتابعات نقدية حول السينما.': 'Écrits et analyses critiques sur le cinéma.'
   },
   en: {
+    'من نحن': 'About Us',
+    'راسلنا': 'Contact Us',
+    'نقرأ الفيلم، ونفكك الصورة': 'We read the film, and deconstruct the image',
+    'ها نحن في العدد الحادي عشر، والحلم الجميل مستمر؛ نقف اليوم على أعتاب إتمام عام من هذه التجربة المستقلة التي تُدار بصفر دينار. لقد تمكّنا من جمع أهم الأقلام في النقد العربي، وفتحنا الباب أمام أقلام شابة بدأت تترك انطباعًا واعدًا، وتؤكد أنها تمثّل مستقبل الكتابة النقدية. نحن ملزمون بعهد أخلاقيّ، من خلال المجلة وموقعها الإلكتروني بمواصلة تقديم مادة مميزة وثرية لقارئنا، الذي نثق بأنه أصبح ينتظرنا على رأس كل شهر... وإنّا لقادمون إليه.': 'Here we are at the eleventh issue, and the beautiful dream goes on. Today we stand on the threshold of a full year of this independent venture, run on zero dinars. We have gathered the most important voices in Arabic criticism and opened the door to young writers who are beginning to leave a promising impression and who represent the future of critical writing. We are bound by a moral pledge, through the magazine and its website, to keep offering distinctive and rich material to our readers, who we trust now await us at the start of every month... and we are coming to them.',
     'الرئيسية': 'Home',
     'الأقسام': 'Sections',
     'المقالات': 'Articles',
@@ -774,6 +782,14 @@ function lookupStaticTranslation(text, lang) {
   if (!dict) return null;
   const clean = String(text ?? '').trim();
   if (dict[clean]) return dict[clean];
+  if (!dict.__norm) {
+    Object.defineProperty(dict, '__norm', { enumerable: false, value: {} });
+    for (const k of Object.keys(dict)) {
+      dict.__norm[normalizeName(k).replace(/[\s،,.؛;:!؟?…"'«»]/g, '')] = dict[k];
+    }
+  }
+  const nk = normalizeName(clean).replace(/[\s،,.؛;:!؟?…"'«»]/g, '');
+  if (nk && dict.__norm[nk]) return dict.__norm[nk];
 
   const issueMatch = clean.match(/^العدد\s+(\d+)$/);
   if (issueMatch) {
