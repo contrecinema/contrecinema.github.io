@@ -511,3 +511,200 @@ html[data-view]:not([data-view="home"]) #issues,
 html[data-view]:not([data-view="home"]) [data-home-only]{
   display:none !important;
 }
+
+
+/* =====================================================================
+   لوحة التحكم بالخطوط والأسطر والعناوين
+   عدّل القيم في :root (الكتلة التالية) فقط
+   ===================================================================== */
+
+/* ---- خط الجزيرة (ارفع الملفات إلى مجلد fonts/ في المستودع) ---- */
+@font-face {
+  font-family: "AlJazeera";
+  src: url("fonts/AlJazeera-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "AlJazeera";
+  src: url("fonts/AlJazeera-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  /* ========== 1) اختر الخط: فعّل سطرًا واحدًا فقط في كل مجموعة ========== */
+
+  /* خط المتن (الفقرات) */
+  --font-body: "IBM Plex Sans Arabic", sans-serif;
+  /* --font-body: "Cairo", sans-serif; */
+  /* --font-body: "Tajawal", sans-serif; */
+  /* --font-body: "Amiri", serif; */
+  /* --font-body: "Noto Naskh Arabic", serif; */
+  /* --font-body: "AlJazeera", "Cairo", sans-serif; */
+
+  /* خط العناوين */
+  --font-heading: "Noto Naskh Arabic", serif;
+  /* --font-heading: "Cairo", sans-serif; */
+  /* --font-heading: "Tajawal", sans-serif; */
+  /* --font-heading: "Amiri", serif; */
+  /* --font-heading: "IBM Plex Sans Arabic", sans-serif; */
+  /* --font-heading: "AlJazeera", "Cairo", sans-serif; */
+
+  /* ========== 2) المتن ========== */
+  --body-size: 17px;
+  --body-line: 2;             /* ارتفاع السطر (1.7 مضغوط - 2.2 مريح) */
+  --body-align: right;        /* right أو justify */
+  --body-weight: 400;
+  --para-gap: 1em;            /* المسافة بين الفقرات */
+
+  /* ========== 3) العناوين ========== */
+  --h2-size: 38px;            /* عناوين الأقسام */
+  --h3-size: 27px;            /* عناوين البطاقات */
+  --heading-weight: 700;      /* 400 / 600 / 700 / 900 */
+  --heading-line: 1.3;        /* ارتفاع سطر العنوان */
+
+  /* ========== 4) السطر الأحمر الصغير فوق العنوان ========== */
+  --eyebrow-size: 14px;
+  --eyebrow-weight: 700;
+
+  /* ========== 5) خانة الواجهة (بطاقة التعريف) ========== */
+  --hero-h1-size: 44px;
+  --hero-p-size: 18px;
+  --hero-p-line: 2;
+
+  /* ========== 6) صفحة من نحن ========== */
+  --about-h2-size: 48px;
+  --about-p-size: 18px;
+  --about-p-line: 2.1;
+  --about-align: right;       /* right أو justify */
+}
+
+/* ===================== تطبيق الخطوط ===================== */
+
+body,
+nav,
+nav a,
+.btn, .mini, .contact-mail,
+.language-switcher select {
+  font-family: var(--font-body);
+}
+
+/* المتن */
+.hero p,
+.hero-text-panel p,
+.current-info p,
+.article-card p,
+.person p,
+.section-card p,
+.about-inner p,
+.contact p {
+  font-family: var(--font-body);
+  font-weight: var(--body-weight);
+}
+
+/* العناوين */
+.hero h1,
+.hero-text-panel h1,
+.section-head h2,
+.current-info h3,
+.issue-body strong,
+.section-card b,
+.article-card h3,
+.person h3,
+.about-inner h2,
+.contact h2,
+.brand span,
+.avatar,
+.placeholder-cover,
+.issue-cover span {
+  font-family: var(--font-heading);
+  font-weight: var(--heading-weight);
+}
+
+/* ===================== أحجام العناوين ===================== */
+
+.section-head h2,
+.contact h2 { font-size: var(--h2-size); line-height: var(--heading-line); }
+
+.article-card h3,
+.person h3 { font-size: var(--h3-size); line-height: var(--heading-line); }
+
+.kicker,
+.eyebrow,
+.hero-text-panel .kicker {
+  font-size: var(--eyebrow-size);
+  font-weight: var(--eyebrow-weight);
+  font-family: var(--font-body);
+}
+
+/* ===================== المتن والأسطر ===================== */
+
+.current-info p,
+.article-card p,
+.person p,
+.contact p {
+  line-height: var(--body-line);
+  text-align: var(--body-align);
+  margin-bottom: var(--para-gap);
+}
+
+/* ===================== خانة الواجهة (الصفحة الرئيسية) ===================== */
+
+.hero-text-panel h1 {
+  font-size: var(--hero-h1-size);
+  line-height: var(--heading-line);
+  margin: 10px 0 14px;
+}
+.hero-text-panel p {
+  font-size: var(--hero-p-size);
+  line-height: var(--hero-p-line);
+  text-align: var(--body-align);
+  max-width: none;
+}
+
+/* ===================== صفحة من نحن ===================== */
+
+.about-inner h2 {
+  font-size: var(--about-h2-size);
+  line-height: var(--heading-line);
+}
+.about-inner p {
+  font-size: var(--about-p-size);
+  line-height: var(--about-p-line);
+  text-align: var(--about-align);
+  margin: 0 0 var(--para-gap);
+}
+.about-inner p:last-child { margin-bottom: 0; }
+
+/* ===================== الهاتف ===================== */
+
+@media (max-width: 900px) {
+  :root {
+    --h2-size: 32px;
+    --about-h2-size: 38px;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --hero-h1-size: 30px;
+    --hero-p-size: 16px;
+    --hero-p-line: 1.95;
+    --h2-size: 28px;
+    --h3-size: 23px;
+    --about-h2-size: 32px;
+    --about-p-size: 16px;
+    --about-p-line: 2;
+  }
+  .hero-text-panel h1 { font-size: var(--hero-h1-size); }
+  .hero-text-panel p  { font-size: var(--hero-p-size); }
+}
+
+/* في الفرنسية والإنجليزية: محاذاة لليسار */
+html[dir="ltr"] .hero-text-panel p,
+html[dir="ltr"] .about-inner p,
+html[dir="ltr"] .article-card p,
+html[dir="ltr"] .person p {
+  text-align: left;
+}
