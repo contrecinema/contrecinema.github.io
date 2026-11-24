@@ -691,13 +691,23 @@ function bindShareCopy(article, lang = 'ar') {
 }
 
 /* =========================================================
-   MULTILINGUAL SYSTEM (BATCHED + PRIORITY + RETRY)
+   MULTILINGUAL SYSTEM (CHUNKED + SHARED + RATE-LIMITED)
 ========================================================= */
 const CC_LANG_KEY = 'cc-lang';
 const CC_CACHE_PREFIX = 'cc_tr_v13_';
 const CC_MEMORY_CACHE = new Map();
 const CC_INFLIGHT_REQUESTS = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
+
+/* ---- إعدادات الترجمة ---- */
+// الحد الأدنى بين طلبين (مللي ثانية): 4500 ≈ 13 طلباً/دقيقة (آمن لحدّ Gemini المجاني).
+// إن كانت خطة Gemini مدفوعة يمكن خفضه إلى 1500.
+const CC_MIN_GAP = 4500;
+const CC_MAX_GAP = 20000;
+// حجم قطعة المقال الواحدة: أصغر => طلب أسرع ولا ينتهي بالمهلة
+const CC_CHUNK_SIZE = 900;
+// عدد المقالات قيد الترجمة (لإعطائها الأولوية على ترجمة الواجهة)
+let CC_ARTICLE_BUSY = 0;
 
 const AUTHORS_LATIN_MAP = {
   [normalizeName('حكيم محمدي')]: 'Mohammedi Hakim',
@@ -975,14 +985,15 @@ function readCachedTranslation(lang, text) {
   return null;
 }
 
-function writeCachedTranslation(lang, text, translated) {
+// share=false: لقطع المقالات الطويلة (تُحفظ في article_translations وليس في translations)
+function writeCachedTranslation(lang, text, translated, share = true) {
   if (!isValidTranslation(text, translated)) return;
   const key = cacheKeyFor(lang, text);
   CC_MEMORY_CACHE.set(key, translated);
   try {
     localStorage.setItem(key, translated);
   } catch (e) {}
-  queueShare(lang, text, translated);
+  if (share) queueShare(lang, text, translated);
 }
 
 /* ---------- ترجمات مشتركة بين كل الزوار (جدول translations) ---------- */
@@ -995,19 +1006,25 @@ function loadSharedTranslations(lang) {
   if (CC_SHARED_LOADED[lang]) return CC_SHARED_LOADED[lang];
   CC_SHARED_LOADED[lang] = (async () => {
     try {
-      const req = db.from('translations')
-        .select('source,text')
-        .eq('lang', lang)
-        .range(0, 999);
-      const r = await Promise.race([
-        req,
-        new Promise(res => setTimeout(() => res(null), 4000))
-      ]);
-      if (!r || r.error || !Array.isArray(r.data)) return;
-      for (const row of r.data) {
-        if (row.source && row.text && isValidTranslation(row.source, row.text)) {
-          CC_MEMORY_CACHE.set(cacheKeyFor(lang, row.source), row.text);
+      // نحمّل على صفحات (1000 سطر لكل صفحة) حتى لا نفقد ما بعد أول 1000
+      for (let page = 0; page < 6; page++) {
+        const from = page * 1000;
+        const req = db.from('translations')
+          .select('source,text')
+          .eq('lang', lang)
+          .order('source', { ascending: true })
+          .range(from, from + 999);
+        const r = await Promise.race([
+          req,
+          new Promise(res => setTimeout(() => res(null), 6000))
+        ]);
+        if (!r || r.error || !Array.isArray(r.data)) return;
+        for (const row of r.data) {
+          if (row.source && row.text && isValidTranslation(row.source, row.text)) {
+            CC_MEMORY_CACHE.set(cacheKeyFor(lang, row.source), row.text);
+          }
         }
+        if (r.data.length < 1000) return;
       }
     } catch (e) {}
   })();
@@ -1042,7 +1059,7 @@ async function flushShare() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
-const CC_BUILD = 'build-19';
+const CC_BUILD = 'build-20';
 const CC_DEBUG_ON = /[?&]trdebug/.test(location.search);
 const CC_DEBUG_LINES = [];
 function ccDbg(msg) {
@@ -1063,15 +1080,15 @@ let CC_COOLDOWN_UNTIL = 0;
 let CC_FAILS = 0;
 function ccFail(hard) {
   CC_FAILS++;
-  if (hard || CC_FAILS >= 3) {
+  if (hard || CC_FAILS >= 5) {
     // الدالة متعثرة: نتوقف قليلاً بدل إغراقها بالطلبات
-    CC_COOLDOWN_UNTIL = Date.now() + (hard ? 60000 : 20000);
+    CC_COOLDOWN_UNTIL = Date.now() + (hard ? 60000 : 15000);
     CC_FAILS = 0;
   }
 }
 
 /* ---- تنظيم معدل الطلبات: يتكيف تلقائياً مع حدّ Gemini (429) ---- */
-let CC_GAP = 1500;       // أقل فاصل بين طلبين (مللي ثانية)
+let CC_GAP = CC_MIN_GAP; // أقل فاصل بين طلبين (مللي ثانية)
 let CC_NEXT_SLOT = 0;
 async function ccThrottle() {
   const now = Date.now();
@@ -1080,14 +1097,15 @@ async function ccThrottle() {
   if (start > now) await sleep(start - now);
 }
 function ccRateLimited() {
-  CC_GAP = Math.min(CC_GAP * 2, 9000);
-  CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 12000);
-  ccDbg('429 -> gap=' + CC_GAP + 'ms, pause 12s');
+  CC_GAP = Math.min(Math.round(CC_GAP * 1.6), CC_MAX_GAP);
+  CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 15000);
+  ccDbg('429 -> gap=' + CC_GAP + 'ms, pause 15s');
 }
 
 async function callGeminiFunction(clean, targetLang) {
   await ccThrottle();
-  const timeoutMs = Math.min(30000, 8000 + clean.length * 12);
+  // مهلة أطول: إلغاء الطلب من المتصفح لا يوقف الخادم ويستهلك الحصة دون فائدة
+  const timeoutMs = Math.min(70000, 20000 + clean.length * 25);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const t0 = Date.now();
@@ -1106,14 +1124,17 @@ async function callGeminiFunction(clean, targetLang) {
     const ms = Date.now() - t0;
     if (!res.ok) {
       if (res.status === 429) ccRateLimited();
-      else if (res.status === 503) CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 4000);
+      else if (res.status === 503) CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 5000);
       else ccFail(false);
       ccDbg('GEMINI HTTP ' + res.status + ' ' + ms + 'ms ' + tag + ' ' + JSON.stringify(data).slice(0, 100));
       return '';
     }
     const translated = String(data?.translatedText || '').trim();
     const ok = isValidTranslation(clean, translated);
-    if (ok) { CC_FAILS = 0; CC_GAP = Math.max(1200, Math.round(CC_GAP * 0.92)); }
+    if (ok) {
+      CC_FAILS = 0;
+      CC_GAP = Math.max(CC_MIN_GAP, Math.round(CC_GAP * 0.95));
+    }
     ccDbg('GEMINI ' + (ok ? 'OK ' : 'BAD ') + ms + 'ms ' + tag);
     return ok ? translated : '';
   } catch (error) {
@@ -1128,9 +1149,10 @@ async function callGeminiFunction(clean, targetLang) {
 async function requestTranslationOnce(text, targetLang) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
-  if (Date.now() < CC_COOLDOWN_UNTIL) {
+  // أثناء التبريد ننتظر بدل إرجاع '' فوراً (كان ذلك يُفشل كل القطع دفعة واحدة)
+  while (Date.now() < CC_COOLDOWN_UNTIL) {
     ccDbg('COOLDOWN ' + Math.ceil((CC_COOLDOWN_UNTIL - Date.now()) / 1000) + 's');
-    return '';
+    await sleep(Math.min(1000, Math.max(100, CC_COOLDOWN_UNTIL - Date.now())));
   }
   return await callGeminiFunction(clean, targetLang);
 }
@@ -1161,7 +1183,7 @@ async function requestTranslation(text, targetLang, retries = 2) {
   return promise;
 }
 
-/* ---------- BATCH: عدة نصوص في طلب واحد (بدون تعديل الدالة) ---------- */
+/* ---------- BATCH: عدة نصوص في طلب واحد (غير مستخدم حالياً) ---------- */
 const CC_BATCH_SEP = '\n@@@\n';
 
 let CC_BATCH_BROKEN = false;
@@ -1199,7 +1221,8 @@ function makeBatches(unique, firstSize = 8, size = 10, maxChars = 1200) {
 }
 
 /*
-  يترجم قائمة نصوص فريدة بالدفعات.
+  يترجم قائمة نصوص فريدة (الواجهة والعناوين).
+  عاملان فقط، وتتوقف مؤقتاً أثناء ترجمة مقال ليأخذ الأولوية.
   alive(): هل ما زالت العملية صالحة؟
   apply(src, translated): تطبيق الترجمة على الصفحة
 */
@@ -1207,9 +1230,11 @@ async function translateUnique(unique, lang, alive, apply) {
   if (!unique.length) return;
   let idx = 0;
   const workers = Array.from(
-    { length: Math.min(3, unique.length) },
+    { length: Math.min(2, unique.length) },
     async () => {
       while (idx < unique.length) {
+        if (!alive()) return;
+        while (CC_ARTICLE_BUSY > 0 && alive()) await sleep(400);
         if (!alive()) return;
         const src = unique[idx++];
         const tr = await requestTranslation(src, lang, 1);
@@ -1317,7 +1342,34 @@ function keepEdgeSpaces(chunk, tr) {
   return lead + tr + trail;
 }
 
+/* ---------- قطع المقال: كل قطعة تُحفظ في article_translations فور نجاحها ---------- */
+function ccChunkKey(articleId, lang, index, chunk) {
+  return String(articleId) + '|chunk' + index + '|' + cacheKeyFor(lang, chunk.trim());
+}
+
+async function ccLoadSharedChunks(articleId) {
+  const map = new Map();
+  if (articleId == null) return map;
+  try {
+    const req = db.from('article_translations')
+      .select('key,content')
+      .like('key', String(articleId) + '|chunk%')
+      .limit(1000);
+    const r = await Promise.race([
+      req,
+      new Promise(res => setTimeout(() => res(null), 6000))
+    ]);
+    if (r && !r.error && Array.isArray(r.data)) {
+      for (const row of r.data) {
+        if (row.key && row.content) map.set(row.key, String(row.content));
+      }
+    }
+  } catch (e) {}
+  return map;
+}
+
 async function translateWholeArticle(content, lang, articleId = null) {
+  translateWholeArticle.incomplete = false;
   const original = String(content ?? '');
   if (!original.trim() || lang === 'ar') {
     return original;
@@ -1334,57 +1386,75 @@ async function translateWholeArticle(content, lang, articleId = null) {
   if (sharedKey) {
     const shared = await loadSharedArticle(sharedKey);
     if (shared && isValidTranslation(original, shared)) {
-      writeCachedTranslation(lang, original, shared);
+      writeCachedTranslation(lang, original, shared, false);
       return shared;
     }
   }
 
-  const chunks = splitTextForTranslation(original, 2000);
+  const chunks = splitTextForTranslation(original, CC_CHUNK_SIZE);
   const out = new Array(chunks.length).fill(undefined);
   const needsTr = c => c.trim() && /[\u0600-\u06FF]/.test(c);
+  const sharedChunks = await ccLoadSharedChunks(articleId);
 
-  async function pass(indices) {
+  // ما هو جاهز مسبقاً: كاش المتصفح أو قاعدة البيانات
+  chunks.forEach((chunk, i) => {
+    if (!needsTr(chunk)) {
+      out[i] = chunk;
+      return;
+    }
+    const clean = chunk.trim();
+    let tr = readCachedTranslation(lang, clean);
+    if (!(tr && isValidTranslation(clean, tr))) {
+      const s = articleId != null
+        ? sharedChunks.get(ccChunkKey(articleId, lang, i, chunk))
+        : null;
+      tr = s && isValidTranslation(clean, s) ? s : null;
+      if (tr) writeCachedTranslation(lang, clean, tr, false);
+    }
+    if (tr) out[i] = keepEdgeSpaces(chunk, tr);
+  });
+
+  const missing = () =>
+    out.map((v, i) => (v === undefined ? i : -1)).filter(i => i >= 0);
+
+  const pass = async indices => {
     let k = 0;
     await Promise.all(
-      Array.from({ length: Math.min(4, indices.length) }, async () => {
+      Array.from({ length: Math.min(2, indices.length) }, async () => {
         while (k < indices.length) {
           const i = indices[k++];
           const chunk = chunks[i];
-          if (!needsTr(chunk)) {
-            out[i] = chunk;
-            continue;
-          }
           const clean = chunk.trim();
-          let tr = readCachedTranslation(lang, clean);
-          if (!(tr && isValidTranslation(clean, tr))) {
-            tr = await requestTranslation(clean, lang, 1);
-            if (tr && isValidTranslation(clean, tr)) {
-              writeCachedTranslation(lang, clean, tr);
-            } else {
-              tr = null;
+          const tr = await requestTranslation(clean, lang, 2);
+          if (tr && isValidTranslation(clean, tr)) {
+            writeCachedTranslation(lang, clean, tr, false);
+            if (articleId != null) {
+              saveSharedArticle(ccChunkKey(articleId, lang, i, chunk), tr);
             }
+            out[i] = keepEdgeSpaces(chunk, tr);
           }
-          out[i] = tr ? keepEdgeSpaces(chunk, tr) : null;
         }
       })
     );
-  }
+  };
 
-  const missing = () =>
-    out.map((v, i) => (v == null ? i : -1)).filter(i => i >= 0);
-
-  await pass(chunks.map((_, i) => i));
-  if (missing().length) {
-    await sleep(800);
-    await pass(missing());
+  CC_ARTICLE_BUSY++;
+  try {
+    for (let round = 0; round < 3 && missing().length; round++) {
+      if (round) await sleep(2000 * round);
+      await pass(missing());
+    }
+  } finally {
+    CC_ARTICLE_BUSY--;
   }
 
   const bad = missing();
-  const result = out.map((v, i) => (v == null ? chunks[i] : v)).join('');
+  translateWholeArticle.incomplete = bad.length > 0;
+  const result = out.map((v, i) => (v === undefined ? chunks[i] : v)).join('');
 
-  // لا نخزّن إلا الترجمة الكاملة، حتى لا تبقى فقرات عربية دائمة
+  // المقال الكامل لا يُخزَّن إلا إذا نجحت كل القطع
   if (!bad.length && isValidTranslation(original, result)) {
-    writeCachedTranslation(lang, original, result);
+    writeCachedTranslation(lang, original, result, false);
     if (sharedKey) saveSharedArticle(sharedKey, result);
   }
   return result;
@@ -1616,7 +1686,8 @@ function initLanguageSwitcher() {
    OPEN ARTICLE
 ========================================================= */
 let CC_OPEN_ARTICLE_REQUEST = 0;
-async function openArticle(id, keepReaderOpen = false) {
+// silent=true: إعادة محاولة صامتة لإكمال القطع الناقصة (بدون رسالة "جارٍ الترجمة")
+async function openArticle(id, keepReaderOpen = false, silent = false) {
   createArticleReader();
   const requestId = ++CC_OPEN_ARTICLE_REQUEST;
   const articles = window.__CC_ARTICLES__ || [];
@@ -1625,6 +1696,7 @@ async function openArticle(id, keepReaderOpen = false) {
   );
   if (!article) return;
   window.__CC_OPEN_ARTICLE__ = article;
+  if (!keepReaderOpen) article.__trRetry = 0;
 
   if (!keepReaderOpen) {
     Promise.resolve(
@@ -1664,7 +1736,7 @@ async function openArticle(id, keepReaderOpen = false) {
     !rawContent.trim() ||
     readCachedTranslation(lang, rawContent) !== null;
 
-  if (!isContentCached) {
+  if (!isContentCached && !silent) {
     target.innerHTML = `
       <div class="cc-no-content">
         ${
@@ -1793,6 +1865,21 @@ async function openArticle(id, keepReaderOpen = false) {
   const hash = '#article-' + encodeURIComponent(article.id);
   if (!keepReaderOpen && location.hash !== hash) {
     history.replaceState(null, '', location.pathname + hash);
+  }
+
+  // إكمال تلقائي صامت للقطع التي لم تُترجم بعد (حتى 5 مرات)
+  if (lang !== 'ar' && translateWholeArticle.incomplete) {
+    article.__trRetry = (article.__trRetry || 0) + 1;
+    if (article.__trRetry <= 5) {
+      setTimeout(() => {
+        if (
+          window.__CC_OPEN_ARTICLE__ === article &&
+          getCurrentLang() === lang
+        ) {
+          openArticle(article.id, true, true);
+        }
+      }, 12000);
+    }
   }
 }
 
