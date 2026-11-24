@@ -2196,3 +2196,123 @@ window.addEventListener('hashchange', ccApplyView);
 ========================================================= */
 initTheme();
 main();
+/* =========================================================
+   تطبيق تنسيق الخطوط والأسطر القادم من لوحة التحكم
+   الصق هذا الكود في آخر ملف app.js (بعد آخر سطر)
+   ========================================================= */
+
+const CC_TY_FONTS = {
+  'IBM Plex Sans Arabic': "'IBM Plex Sans Arabic',sans-serif",
+  'Noto Naskh Arabic': "'Noto Naskh Arabic',serif",
+  'Cairo': "'Cairo',sans-serif",
+  'Tajawal': "'Tajawal',sans-serif",
+  'Amiri': "'Amiri',serif",
+  'AlJazeera': "'AlJazeera','Cairo',sans-serif"
+};
+
+const CC_TY_HEADINGS =
+  '.hero h1,.hero-text-panel h1,.section-head h2,.current-info h3,' +
+  '.issue-body strong,.section-card b,.article-card h3,.person h3,' +
+  '.about-inner h2,.contact h2';
+
+const CC_TY_BODY =
+  'body,nav,nav a,.btn,.mini,.contact-mail,.hero p,.hero-text-panel p,' +
+  '.current-info p,.article-card p,.person p,.section-card p,' +
+  '.about-inner p,.contact p';
+
+function ccTyNum(value, min, max) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= min && n <= max ? n : null;
+}
+
+function ccApplyTypography(settings) {
+
+  const t = settings && settings.typography;
+
+  if (!t || typeof t !== 'object') {
+    return;
+  }
+
+  const rules = [];
+  const mobile = [];
+
+  if (CC_TY_FONTS[t.headingFont]) {
+    rules.push(
+      CC_TY_HEADINGS + '{font-family:' + CC_TY_FONTS[t.headingFont] + '}'
+    );
+  }
+
+  if (CC_TY_FONTS[t.bodyFont]) {
+    rules.push(
+      CC_TY_BODY + '{font-family:' + CC_TY_FONTS[t.bodyFont] + '}'
+    );
+  }
+
+  if (['400', '500', '600', '700', '800', '900']
+        .includes(String(t.headingWeight))) {
+    rules.push(
+      CC_TY_HEADINGS + '{font-weight:' + t.headingWeight + '}'
+    );
+  }
+
+  const blocks = [
+    ['.hero-text-panel h1', t.heroTitle, null, null],
+    ['.hero-text-panel p', t.heroText, t.heroLine, t.heroAlign],
+    ['.about-inner h2', t.aboutTitle, null, null],
+    ['.about-inner p', t.aboutText, t.aboutLine, t.aboutAlign]
+  ];
+
+  blocks.forEach(([selector, size, line, align]) => {
+
+    const d = ccTyNum(size && size.d, 10, 120);
+    const m = ccTyNum(size && size.m, 10, 120);
+    const l = ccTyNum(line, 1, 3.5);
+
+    const decl = [];
+
+    if (d) decl.push('font-size:' + d + 'px');
+    if (l) decl.push('line-height:' + l);
+
+    if (['right', 'left', 'center', 'justify'].includes(align)) {
+      decl.push('text-align:' + align);
+    }
+
+    if (decl.length) {
+      rules.push(selector + '{' + decl.join(';') + '}');
+    }
+
+    if (m) {
+      mobile.push(selector + '{font-size:' + m + 'px}');
+    }
+
+  });
+
+  if (t.keepBreaks !== false) {
+    rules.push(
+      '#heroTitle,#heroDesc,#aboutTitle,#aboutText,#aboutText2' +
+      '{white-space:pre-line}'
+    );
+  }
+
+  if (mobile.length) {
+    rules.push('@media(max-width:560px){' + mobile.join('') + '}');
+  }
+
+  let style = document.getElementById('ccTypographyStyle');
+
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'ccTypographyStyle';
+    document.head.appendChild(style);
+  }
+
+  style.textContent = rules.join('\n');
+
+}
+
+const __ccOrigApplySiteSettings = applySiteSettings;
+
+applySiteSettings = function (settings) {
+  __ccOrigApplySiteSettings(settings);
+  ccApplyTypography(settings);
+};
