@@ -3189,3 +3189,300 @@ document.addEventListener(
 
   }
 );
+/* =========================================================
+   تنسيق الخطوط والأسطر والعناوين داخل «إعدادات الواجهة»
+   الصق هذا الكود في آخر ملف admin.js (بعد آخر سطر)
+   ========================================================= */
+
+const CC_TY_FONT_CHOICES = [
+  ['', 'الافتراضي (بدون تغيير)'],
+  ['IBM Plex Sans Arabic', 'IBM Plex Sans Arabic'],
+  ['Noto Naskh Arabic', 'Noto Naskh Arabic (نسخ)'],
+  ['Cairo', 'Cairo'],
+  ['Tajawal', 'Tajawal'],
+  ['Amiri', 'Amiri (تقليدي)'],
+  ['AlJazeera', 'خط الجزيرة (يحتاج رفع ملفاته)']
+];
+
+const CC_TY_FONT_CSS = {
+  'IBM Plex Sans Arabic': "'IBM Plex Sans Arabic',sans-serif",
+  'Noto Naskh Arabic': "'Noto Naskh Arabic',serif",
+  'Cairo': "'Cairo',sans-serif",
+  'Tajawal': "'Tajawal',sans-serif",
+  'Amiri': "'Amiri',serif",
+  'AlJazeera': "'AlJazeera','Cairo',sans-serif"
+};
+
+function ccTyHTML(s) {
+
+  const t = (s && s.typography) || {};
+
+  const pick = (obj, key, def) =>
+    obj && obj[key] !== undefined && obj[key] !== null && obj[key] !== ''
+      ? obj[key]
+      : def;
+
+  const fontSel = (id, val) => `
+    <select id="${id}">
+      ${CC_TY_FONT_CHOICES.map(([v, l]) => `
+        <option value="${esc(v)}" ${v === val ? 'selected' : ''}>
+          ${esc(l)}
+        </option>`).join('')}
+    </select>`;
+
+  const alignSel = (id, val) => `
+    <select id="${id}">
+      ${[
+        ['right', 'يمين'],
+        ['justify', 'ضبط الأطراف'],
+        ['center', 'وسط'],
+        ['left', 'يسار']
+      ].map(([v, l]) => `
+        <option value="${v}" ${v === val ? 'selected' : ''}>${l}</option>`).join('')}
+    </select>`;
+
+  const weightSel = (id, val) => `
+    <select id="${id}">
+      ${[
+        ['400', 'عادي 400'],
+        ['500', 'متوسط 500'],
+        ['600', 'شبه غليظ 600'],
+        ['700', 'غليظ 700'],
+        ['800', 'غليظ جدًا 800'],
+        ['900', 'أغلظ 900']
+      ].map(([v, l]) => `
+        <option value="${v}" ${v === String(val) ? 'selected' : ''}>${l}</option>`).join('')}
+    </select>`;
+
+  const num = (id, val, step = 1) => `
+    <input id="${id}" type="number" step="${step}"
+      inputmode="decimal" value="${esc(val)}">`;
+
+  const pair = (label, idD, idM, d, m) => `
+    <div class="fmt-head">${label}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <label>الحاسوب (px) ${num(idD, d)}</label>
+      <label>الهاتف (px) ${num(idM, m)}</label>
+    </div>`;
+
+  return `
+    <div oninput="ccTyPreview()" onchange="ccTyPreview()">
+
+      <div class="fmt-head">تنسيق الخطوط والأسطر</div>
+
+      <label>
+        خط العناوين (كل الموقع)
+        ${fontSel('ty_hf', pick(t, 'headingFont', ''))}
+      </label>
+
+      <label>
+        خط النصوص (كل الموقع)
+        ${fontSel('ty_bf', pick(t, 'bodyFont', ''))}
+      </label>
+
+      <label>
+        سماكة العناوين
+        ${weightSel('ty_hw', pick(t, 'headingWeight', '700'))}
+      </label>
+
+      ${pair('عنوان الواجهة', 'ty_ht_d', 'ty_ht_m',
+        pick(t.heroTitle, 'd', 44), pick(t.heroTitle, 'm', 30))}
+
+      ${pair('نص الواجهة (الوصف)', 'ty_hp_d', 'ty_hp_m',
+        pick(t.heroText, 'd', 18), pick(t.heroText, 'm', 16))}
+
+      <label>
+        ارتفاع السطر في الواجهة (1.6 مضغوط — 2.4 واسع)
+        ${num('ty_hl', pick(t, 'heroLine', 2), 0.1)}
+      </label>
+
+      <label>
+        محاذاة نص الواجهة
+        ${alignSel('ty_ha', pick(t, 'heroAlign', 'right'))}
+      </label>
+
+      ${pair('عنوان من نحن', 'ty_at_d', 'ty_at_m',
+        pick(t.aboutTitle, 'd', 48), pick(t.aboutTitle, 'm', 32))}
+
+      ${pair('نص من نحن', 'ty_ap_d', 'ty_ap_m',
+        pick(t.aboutText, 'd', 18), pick(t.aboutText, 'm', 16))}
+
+      <label>
+        ارتفاع السطر في من نحن
+        ${num('ty_al', pick(t, 'aboutLine', 2.1), 0.1)}
+      </label>
+
+      <label>
+        محاذاة نص من نحن
+        ${alignSel('ty_aa', pick(t, 'aboutAlign', 'right'))}
+      </label>
+
+      <label class="check-field">
+        <input id="ty_kb" type="checkbox"
+          ${t.keepBreaks === false ? '' : 'checked'}>
+        <span>
+          احتفظ بالأسطر كما كتبتها (السطر الجديد يظهر في الموقع)
+        </span>
+      </label>
+
+      <div class="fmt-head">معاينة (بحجم الهاتف)</div>
+      <div id="ty_preview"
+        style="border:1px solid #d8d2ca;padding:14px;background:#fff">
+        <h4>نقرأ الفيلم، ونفكك الصورة</h4>
+        <p>ها نحن في العدد الحادي عشر، والحلم الجميل مستمر؛
+        نقف اليوم على أعتاب إتمام عام من هذه التجربة المستقلة.</p>
+      </div>
+
+    </div>
+  `;
+}
+
+function ccTyPreview() {
+
+  const box = document.getElementById('ty_preview');
+
+  if (!box) {
+    return;
+  }
+
+  const v = id => (document.getElementById(id) || {}).value;
+
+  const hf =
+    CC_TY_FONT_CSS[v('ty_hf')] ||
+    "'Noto Naskh Arabic',serif";
+
+  const bf =
+    CC_TY_FONT_CSS[v('ty_bf')] ||
+    "'IBM Plex Sans Arabic',sans-serif";
+
+  const h = box.querySelector('h4');
+  const p = box.querySelector('p');
+
+  if (h) {
+    h.style.cssText =
+      `font-family:${hf};` +
+      `font-weight:${v('ty_hw') || 700};` +
+      `font-size:${v('ty_ht_m') || 30}px;` +
+      'line-height:1.3;margin:0 0 8px';
+  }
+
+  if (p) {
+    p.style.cssText =
+      `font-family:${bf};` +
+      `font-size:${v('ty_hp_m') || 16}px;` +
+      `line-height:${v('ty_hl') || 2};` +
+      `text-align:${v('ty_ha') || 'right'};` +
+      'margin:0;white-space:pre-line';
+  }
+
+}
+
+function ccReadTypography() {
+
+  const el = id => document.getElementById(id);
+
+  const v = id => (el(id) || {}).value;
+
+  const n = id => {
+    const x = parseFloat(v(id));
+    return Number.isFinite(x) ? x : null;
+  };
+
+  return {
+
+    headingFont: v('ty_hf') || '',
+    bodyFont: v('ty_bf') || '',
+    headingWeight: v('ty_hw') || '700',
+
+    heroTitle: { d: n('ty_ht_d'), m: n('ty_ht_m') },
+    heroText: { d: n('ty_hp_d'), m: n('ty_hp_m') },
+    aboutTitle: { d: n('ty_at_d'), m: n('ty_at_m') },
+    aboutText: { d: n('ty_ap_d'), m: n('ty_ap_m') },
+
+    heroLine: n('ty_hl'),
+    aboutLine: n('ty_al'),
+
+    heroAlign: v('ty_ha') || 'right',
+    aboutAlign: v('ty_aa') || 'right',
+
+    keepBreaks: !!(el('ty_kb') || {}).checked
+
+  };
+
+}
+
+/* ---- إدخال اللوحة داخل نموذج الإعدادات ---- */
+const __ccOrigSettingsUI = settingsUI;
+
+settingsUI = function () {
+
+  const html = __ccOrigSettingsUI();
+
+  const block = ccTyHTML(D.settings || {});
+
+  const re =
+    /<button\s+class="btn full"\s+onclick="saveSettings\(\)">/;
+
+  const out = html.replace(re, m => block + m);
+
+  if (out === html) {
+    return html +
+      '<div class="panel"><div class="form">' +
+      block +
+      '</div></div>';
+  }
+
+  return out;
+
+};
+
+/* ---- حفظ التنسيق مع الإعدادات ---- */
+const __ccOrigSaveSettings = saveSettings;
+
+saveSettings = async function () {
+
+  const typography = ccReadTypography();
+
+  await __ccOrigSaveSettings();
+
+  try {
+
+    const { error } = await db
+      .from('settings')
+      .update({ typography })
+      .eq('id', true);
+
+    if (error) {
+      throw error;
+    }
+
+    await load();
+
+    show('settings');
+
+  } catch (error) {
+
+    console.error('TYPOGRAPHY SAVE ERROR:', error);
+
+    alert(
+      'تم حفظ الإعدادات، لكن تعذر حفظ تنسيق الخطوط:\n\n' +
+      msgError(error) +
+      '\n\nتأكد من تنفيذ كود SQL الخاص بعمود typography في Supabase.'
+    );
+
+  }
+
+};
+
+/* ---- تحديث المعاينة عند فتح تبويب الإعدادات ---- */
+const __ccOrigShow = show;
+
+show = function (tab) {
+
+  __ccOrigShow(tab);
+
+  if (tab === 'settings') {
+    ccTyPreview();
+  }
+
+};
