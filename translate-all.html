@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ترجمة مسبقة</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:#111;color:#eee}
+  h1{font-size:20px;margin:0 0 8px}
+  #bar{height:10px;background:#333;border-radius:5px;overflow:hidden;margin:12px 0}
+  #fill{height:100%;width:0;background:#e63946;transition:width .3s}
+  #status{font-size:15px;margin-bottom:10px}
+  #check{font-size:14px;line-height:1.8;margin:10px 0;padding:10px;background:#1b1b1b;border-radius:6px}
+  #log{white-space:pre-wrap;direction:ltr;text-align:left;font:12px/1.5 monospace;background:#000;color:#0f0;padding:10px;border-radius:6px;max-height:55vh;overflow:auto}
+  button{font-size:16px;padding:12px 18px;border:0;border-radius:6px;background:#e63946;color:#fff;margin:0 0 6px 6px}
+  button.alt{background:#444}
+  button:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<h1>الترجمة المسبقة للمقالات</h1>
+<p>اترك هذه الصفحة مفتوحة والشاشة مضاءة. ما يُترجم يُحفظ في Supabase، ولو توقفت يمكنك فتحها لاحقًا فتكمل من حيث توقفت.</p>
+
+<div id="check">جارٍ الفحص...</div>
+
+<button id="test" class="alt">1) اختبار دالة Gemini</button>
+<button id="go">2) ابدأ الترجمة</button>
+<div id="bar"><div id="fill"></div></div>
+<div id="status">في الانتظار</div>
+<pre id="log"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  // نمنع app.js من ترجمة هذه الصفحة عند تحميلها
+  try { localStorage.setItem('cc-lang', 'ar'); } catch (e) {}
+  // نعرض أي خطأ جافاسكربت في الصفحة نفسها (لأننا على الهاتف بلا console)
+  window.__ERRS__ = [];
+  window.addEventListener('error', function (e) {
+    window.__ERRS__.push((e.message || 'error') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  });
+</script>
+<script src="app.js"></script>
+<script>
+  const logEl = document.getElementById('log');
+  const statusEl = document.getElementById('status');
+  const fillEl = document.getElementById('fill');
+  const log = m => {
+    logEl.textContent = new Date().toTimeString().slice(0, 8) + ' ' + m + '\n' + logEl.textContent;
+  };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  /* ---------- فحص ذاتي عند فتح الصفحة ---------- */
+  (function selfCheck() {
+    const rows = [];
+    rows.push('مكتبة supabase: ' + (typeof supabase !== 'undefined' ? '✅' : '❌ لم تُحمَّل'));
+    rows.push('ملف app.js: ' + (typeof CC_BUILD !== 'undefined' ? '✅ ' + CC_BUILD : '❌ لم يُحمَّل أو فيه خطأ'));
+    rows.push('دالة ترجمة المقال: ' + (typeof translateWholeArticle === 'function' ? '✅' : '❌'));
+    if (typeof CC_BUILD !== 'undefined' && CC_BUILD !== 'build-20') {
+      rows.push('⚠️ نسخة app.js قديمة، المطلوب build-20');
+    }
+    if (window.__ERRS__.length) rows.push('أخطاء: ' + window.__ERRS__.join(' | '));
+    document.getElementById('check').innerHTML = rows.join('<br>');
+  })();
+
+  /* ---------- اختبار دالة Gemini مباشرة ---------- */
+  async function testFunction() {
+    const btn = document.getElementById('test');
+    btn.disabled = true;
+    log('اختبار: إرسال جملة قصيرة إلى الدالة...');
+    const t0 = Date.now();
+    try {
+      const res = await fetch(CC_TRANSLATE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({ text: 'مرحبا بكم في مجلة ضد السينما', targetLang: 'fr' })
+      });
+      const body = await res.text();
+      log('HTTP ' + res.status + ' بعد ' + (Date.now() - t0) + 'ms');
+      log('الرد: ' + body.slice(0, 300));
+      if (res.ok) log('✅ الدالة تعمل');
+      else if (res.status === 429) log('❌ تجاوز حد Gemini (429): انتظر أو خفّض الطلبات');
+      else if (res.status === 401 || res.status === 403) log('❌ مشكلة صلاحيات في الدالة (JWT/مفتاح)');
+      else if (res.status === 404) log('❌ الدالة translate غير موجودة في Supabase');
+      else log('❌ خطأ في الدالة، راجع Logs في Supabase');
+    } catch (e) {
+      log('❌ فشل الاتصال: ' + e);
+    }
+    btn.disabled = false;
+  }
+
+  async function keepAwake() {
+    try { if (navigator.wakeLock) await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+
+  async function translateArticle(article, lang) {
+    // العنوان والتصنيف
+    await translateText(article.title || '', lang, null, 3);
+    await translateText(article.category || 'نقد سينمائي', lang, null, 3);
+
+    // النص: نعيد المحاولة حتى يكتمل
+    const raw = String(article.content || '');
+    if (!raw.trim()) return true;
+    for (let attempt = 1; attempt <= 12; attempt++) {
+      await translateWholeArticle(raw, lang, article.id);
+      if (!translateWholeArticle.incomplete) return true;
+      log('ناقص، إعادة بعد 40 ثانية (محاولة ' + attempt + ')');
+      await wait(40000);
+    }
+    return false;
+  }
+
+  async function run() {
+    document.getElementById('go').disabled = true;
+    keepAwake();
+    const all = await get('articles', 'sort_order', true);
+    const articles = all.filter(x => x.visible !== false);
+    const langs = ['fr', 'en'];
+    const total = articles.length * langs.length;
+    let done = 0, failed = [];
+    log('عدد المقالات: ' + articles.length);
+    if (!articles.length) {
+      statusEl.textContent = 'لم تُقرأ أي مقالات من قاعدة البيانات';
+      document.getElementById('go').disabled = false;
+      return;
+    }
+
+    for (const lang of langs) {
+      await loadSharedTranslations(lang);
+      for (const article of articles) {
+        statusEl.textContent = lang.toUpperCase() + ' — ' + done + '/' + total + ' — ' + (article.title || '').slice(0, 40);
+        log(lang + ' ← ' + (article.title || article.id));
+        let ok = false;
+        try { ok = await translateArticle(article, lang); } catch (e) { log('خطأ: ' + e); }
+        if (!ok) { failed.push(lang + ':' + article.id); log('لم يكتمل: ' + article.id); }
+        done++;
+        fillEl.style.width = Math.round(done / total * 100) + '%';
+      }
+    }
+    await wait(4000); // لتفريغ طابور حفظ الترجمات
+    statusEl.textContent = failed.length
+      ? 'انتهت الجولة، وبقي ' + failed.length + ' ناقصًا. أعد فتح الصفحة وابدأ مجددًا.'
+      : 'اكتملت ترجمة كل المقالات ✔';
+    log(statusEl.textContent);
+    document.getElementById('go').disabled = false;
+  }
+
+  document.getElementById('test').onclick = testFunction;
+  document.getElementById('go').onclick = run;
+</script>
+</body>
+</html>
