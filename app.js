@@ -24,8 +24,10 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
 
 function safeUrl(url) {
   if (!url) return '';
+  const raw = String(url).trim();
+  if (!raw) return '';
   try {
-    const u = new URL(url);
+    const u = new URL(raw, location.origin);
     if (u.protocol === 'https:' || u.protocol === 'http:') {
       return u.href;
     }
@@ -197,6 +199,7 @@ function renderIssues(items) {
     const year = (
       String(x.publication_date || '').match(/(?:19|20)\d{2}/) || []
     )[0];
+    const pdfHref = safeUrl(x.pdf_url);
     return `
       <article class="issue-card">
         <div class="issue-cover">${cover(x)}</div>
@@ -211,8 +214,8 @@ function renderIssues(items) {
           </p>
           <div class="issue-links">
             ${
-              x.pdf_url
-                ? `<a class="mini red" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح PDF</a>`
+              pdfHref
+                ? `<a class="mini red" target="_blank" rel="noopener" href="${esc(pdfHref)}">تصفح PDF</a>`
                 : `<span class="mini">PDF قريباً</span>`
             }
             <a class="mini" href="#articles">المقالات</a>
@@ -239,6 +242,7 @@ function renderCurrent(x) {
     return;
   }
   const image = safeUrl(x.cover_image);
+  const pdfHref = safeUrl(x.pdf_url);
   target.innerHTML = `
     <div class="current-cover">
       ${
@@ -257,8 +261,8 @@ function renderCurrent(x) {
       </p>
       <p>تصفح العدد، واقرأ ملفاتنا ومراجعاتنا وحواراتنا السينمائية.</p>
       ${
-        x.pdf_url
-          ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(x.pdf_url)}">تصفح وتحميل العدد PDF</a>`
+        pdfHref
+          ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(pdfHref)}">تصفح وتحميل العدد PDF</a>`
           : ''
       }
     </div>
@@ -385,7 +389,7 @@ function renderTeam(items) {
           <div class="avatar">
             ${
               safeUrl(x.image_url)
-                ? `<img src="${esc(x.image_url)}" alt="${esc(x.name)}" loading="lazy">`
+                ? `<img src="${esc(safeUrl(x.image_url))}" alt="${esc(x.name)}" loading="lazy">`
                 : esc((x.name || '?').slice(0, 1))
             }
           </div>
@@ -411,7 +415,7 @@ function renderEditors(items) {
             <div class="avatar">
               ${
                 safeUrl(x.image_url)
-                  ? `<img src="${esc(x.image_url)}" alt="${esc(fullName)}" loading="lazy">`
+                  ? `<img src="${esc(safeUrl(x.image_url))}" alt="${esc(fullName)}" loading="lazy">`
                   : esc((x.name || '?').slice(0, 1))
               }
             </div>
@@ -699,14 +703,9 @@ const CC_MEMORY_CACHE = new Map();
 const CC_INFLIGHT_REQUESTS = new Map();
 const CC_ORIGINAL_TEXT_NODES = new WeakMap();
 
-/* ---- إعدادات الترجمة ---- */
-// الحد الأدنى بين طلبين (مللي ثانية): 4500 ≈ 13 طلباً/دقيقة (آمن لحدّ Gemini المجاني).
-// إن كانت خطة Gemini مدفوعة يمكن خفضه إلى 1500.
 const CC_MIN_GAP = 4500;
 const CC_MAX_GAP = 20000;
-// حجم قطعة المقال الواحدة: أصغر => طلب أسرع ولا ينتهي بالمهلة
 const CC_CHUNK_SIZE = 900;
-// عدد المقالات قيد الترجمة (لإعطائها الأولوية على ترجمة الواجهة)
 let CC_ARTICLE_BUSY = 0;
 
 const AUTHORS_LATIN_MAP = {
@@ -985,7 +984,6 @@ function readCachedTranslation(lang, text) {
   return null;
 }
 
-// share=false: لقطع المقالات الطويلة (تُحفظ في article_translations وليس في translations)
 function writeCachedTranslation(lang, text, translated, share = true) {
   if (!isValidTranslation(text, translated)) return;
   const key = cacheKeyFor(lang, text);
@@ -996,7 +994,6 @@ function writeCachedTranslation(lang, text, translated, share = true) {
   if (share) queueShare(lang, text, translated);
 }
 
-/* ---------- ترجمات مشتركة بين كل الزوار (جدول translations) ---------- */
 const CC_SHARED_LOADED = {};
 const CC_SHARE_QUEUE = [];
 let CC_SHARE_TIMER = null;
@@ -1006,7 +1003,6 @@ function loadSharedTranslations(lang) {
   if (CC_SHARED_LOADED[lang]) return CC_SHARED_LOADED[lang];
   CC_SHARED_LOADED[lang] = (async () => {
     try {
-      // نحمّل على صفحات (1000 سطر لكل صفحة) حتى لا نفقد ما بعد أول 1000
       for (let page = 0; page < 6; page++) {
         const from = page * 1000;
         const req = db.from('translations')
@@ -1059,36 +1055,17 @@ async function flushShare() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CC_TRANSLATE_ENDPOINT = SUPABASE_URL + '/functions/v1/translate';
 
-const CC_BUILD = 'build-20';
-const CC_DEBUG_ON = /[?&]trdebug/.test(location.search);
-const CC_DEBUG_LINES = [];
-function ccDbg(msg) {
-  if (!CC_DEBUG_ON) return;
-  CC_DEBUG_LINES.unshift(new Date().toTimeString().slice(0, 8) + ' ' + msg);
-  CC_DEBUG_LINES.length = Math.min(CC_DEBUG_LINES.length, 14);
-  let box = document.getElementById('ccDebugBox');
-  if (!box) {
-    box = document.createElement('pre');
-    box.id = 'ccDebugBox';
-    box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;margin:0;padding:8px;max-height:45vh;overflow:auto;background:#000;color:#0f0;font:11px/1.4 monospace;direction:ltr;text-align:left;white-space:pre-wrap';
-    document.body.appendChild(box);
-  }
-  box.textContent = CC_BUILD + ' lang=' + getCurrentLang() + '\n' + CC_DEBUG_LINES.join('\n');
-}
-
 let CC_COOLDOWN_UNTIL = 0;
 let CC_FAILS = 0;
 function ccFail(hard) {
   CC_FAILS++;
   if (hard || CC_FAILS >= 5) {
-    // الدالة متعثرة: نتوقف قليلاً بدل إغراقها بالطلبات
     CC_COOLDOWN_UNTIL = Date.now() + (hard ? 60000 : 15000);
     CC_FAILS = 0;
   }
 }
 
-/* ---- تنظيم معدل الطلبات: يتكيف تلقائياً مع حدّ Gemini (429) ---- */
-let CC_GAP = CC_MIN_GAP; // أقل فاصل بين طلبين (مللي ثانية)
+let CC_GAP = CC_MIN_GAP;
 let CC_NEXT_SLOT = 0;
 async function ccThrottle() {
   const now = Date.now();
@@ -1099,17 +1076,13 @@ async function ccThrottle() {
 function ccRateLimited() {
   CC_GAP = Math.min(Math.round(CC_GAP * 1.6), CC_MAX_GAP);
   CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 15000);
-  ccDbg('429 -> gap=' + CC_GAP + 'ms, pause 15s');
 }
 
 async function callGeminiFunction(clean, targetLang) {
   await ccThrottle();
-  // مهلة أطول: إلغاء الطلب من المتصفح لا يوقف الخادم ويستهلك الحصة دون فائدة
   const timeoutMs = Math.min(70000, 20000 + clean.length * 25);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const t0 = Date.now();
-  const tag = clean.length + 'ch "' + clean.slice(0, 14) + '"';
   try {
     const res = await fetch(CC_TRANSLATE_ENDPOINT, {
       method: 'POST',
@@ -1121,12 +1094,10 @@ async function callGeminiFunction(clean, targetLang) {
       signal: controller.signal
     });
     const data = await res.json().catch(() => ({}));
-    const ms = Date.now() - t0;
     if (!res.ok) {
       if (res.status === 429) ccRateLimited();
       else if (res.status === 503) CC_NEXT_SLOT = Math.max(CC_NEXT_SLOT, Date.now() + 5000);
       else ccFail(false);
-      ccDbg('GEMINI HTTP ' + res.status + ' ' + ms + 'ms ' + tag + ' ' + JSON.stringify(data).slice(0, 100));
       return '';
     }
     const translated = String(data?.translatedText || '').trim();
@@ -1135,11 +1106,9 @@ async function callGeminiFunction(clean, targetLang) {
       CC_FAILS = 0;
       CC_GAP = Math.max(CC_MIN_GAP, Math.round(CC_GAP * 0.95));
     }
-    ccDbg('GEMINI ' + (ok ? 'OK ' : 'BAD ') + ms + 'ms ' + tag);
     return ok ? translated : '';
   } catch (error) {
     ccFail(false);
-    ccDbg('GEMINI ERR ' + (error && error.name) + ' ' + (Date.now() - t0) + 'ms ' + tag);
     return '';
   } finally {
     clearTimeout(timer);
@@ -1149,9 +1118,7 @@ async function callGeminiFunction(clean, targetLang) {
 async function requestTranslationOnce(text, targetLang) {
   const clean = String(text ?? '').trim();
   if (!clean || targetLang === 'ar') return clean;
-  // أثناء التبريد ننتظر بدل إرجاع '' فوراً (كان ذلك يُفشل كل القطع دفعة واحدة)
   while (Date.now() < CC_COOLDOWN_UNTIL) {
-    ccDbg('COOLDOWN ' + Math.ceil((CC_COOLDOWN_UNTIL - Date.now()) / 1000) + 's');
     await sleep(Math.min(1000, Math.max(100, CC_COOLDOWN_UNTIL - Date.now())));
   }
   return await callGeminiFunction(clean, targetLang);
@@ -1183,49 +1150,6 @@ async function requestTranslation(text, targetLang, retries = 2) {
   return promise;
 }
 
-/* ---------- BATCH: عدة نصوص في طلب واحد (غير مستخدم حالياً) ---------- */
-const CC_BATCH_SEP = '\n@@@\n';
-
-let CC_BATCH_BROKEN = false;
-
-async function requestBatch(texts, lang) {
-  if (!texts.length) return [];
-  if (CC_BATCH_BROKEN && texts.length > 1) return null;
-  const joined = texts.join(CC_BATCH_SEP);
-  const out = await requestTranslationOnce(joined, lang, 25000);
-  if (!out) return null;
-  const parts = out.split(/\s*@@@\s*/).map(s => s.trim());
-  if (parts.length === texts.length) return parts;
-  // وصل رد لكن الفاصل لم يُحفظ: نوقف الدفعات حتى لا نضاعف الطلبات
-  if (texts.length > 1) CC_BATCH_BROKEN = true;
-  return null;
-}
-
-function makeBatches(unique, firstSize = 8, size = 10, maxChars = 1200) {
-  const batches = [];
-  let cur = [];
-  let chars = 0;
-  let limit = firstSize;
-  for (const t of unique) {
-    if (cur.length && (cur.length >= limit || chars + t.length > maxChars)) {
-      batches.push(cur);
-      cur = [];
-      chars = 0;
-      limit = size;
-    }
-    cur.push(t);
-    chars += t.length;
-  }
-  if (cur.length) batches.push(cur);
-  return batches;
-}
-
-/*
-  يترجم قائمة نصوص فريدة (الواجهة والعناوين).
-  عاملان فقط، وتتوقف مؤقتاً أثناء ترجمة مقال ليأخذ الأولوية.
-  alive(): هل ما زالت العملية صالحة؟
-  apply(src, translated): تطبيق الترجمة على الصفحة
-*/
 async function translateUnique(unique, lang, alive, apply) {
   if (!unique.length) return;
   let idx = 0;
@@ -1342,7 +1266,6 @@ function keepEdgeSpaces(chunk, tr) {
   return lead + tr + trail;
 }
 
-/* ---------- قطع المقال: كل قطعة تُحفظ في article_translations فور نجاحها ---------- */
 function ccChunkKey(articleId, lang, index, chunk) {
   return String(articleId) + '|chunk' + index + '|' + cacheKeyFor(lang, chunk.trim());
 }
@@ -1396,7 +1319,6 @@ async function translateWholeArticle(content, lang, articleId = null) {
   const needsTr = c => c.trim() && /[\u0600-\u06FF]/.test(c);
   const sharedChunks = await ccLoadSharedChunks(articleId);
 
-  // ما هو جاهز مسبقاً: كاش المتصفح أو قاعدة البيانات
   chunks.forEach((chunk, i) => {
     if (!needsTr(chunk)) {
       out[i] = chunk;
@@ -1452,7 +1374,6 @@ async function translateWholeArticle(content, lang, articleId = null) {
   translateWholeArticle.incomplete = bad.length > 0;
   const result = out.map((v, i) => (v === undefined ? chunks[i] : v)).join('');
 
-  // المقال الكامل لا يُخزَّن إلا إذا نجحت كل القطع
   if (!bad.length && isValidTranslation(original, result)) {
     writeCachedTranslation(lang, original, result, false);
     if (sharedKey) saveSharedArticle(sharedKey, result);
@@ -1503,55 +1424,12 @@ function collectTranslatableTextNodes() {
       nodes.push(node);
     }
   }
-  // نحسب الظهور مرة واحدة لكل عقدة ثم نرتب (الظاهر أولاً)
   const withVis = nodes.map(n => ({
     n,
     v: isNearViewport(n.parentElement) ? 0 : 1
   }));
   withVis.sort((a, b) => a.v - b.v);
   return withVis.map(x => x.n);
-}
-
-/* ---------- عناوين وتصنيفات البطاقات أولاً ---------- */
-async function translateCardsFirst(lang, runId) {
-  const alive = () => runId === CC_TRANSLATION_RUN && getCurrentLang() === lang;
-  const els = [...document.querySelectorAll(
-    '.article-card h3, .article-card .cat, .section-card b, .section-card p'
-  )];
-
-  const items = [];
-  for (const el of els) {
-    if (el.closest('#ccArticleReader')) continue;
-    const node = el.firstChild;
-    if (!node || node.nodeType !== 3) continue;
-    if (!CC_ORIGINAL_TEXT_NODES.has(node)) {
-      CC_ORIGINAL_TEXT_NODES.set(node, node.textContent);
-    }
-    const source = CC_ORIGINAL_TEXT_NODES.get(node);
-    const clean = String(source ?? '').trim();
-    if (!clean || !/[\u0600-\u06FF]/.test(clean)) continue;
-    items.push({ node, source, clean });
-  }
-
-  const todo = [];
-  for (const it of items) {
-    const hit = readCachedTranslation(lang, it.clean);
-    if (hit !== null) {
-      it.node.textContent = it.source.replace(it.clean, hit);
-    } else {
-      todo.push(it);
-    }
-  }
-  if (!todo.length) return;
-
-  const unique = [...new Set(todo.map(x => x.clean))];
-  await translateUnique(unique, lang, alive, (src, tr) => {
-    todo.forEach(x => {
-      if (x.clean === src && x.node.isConnected) {
-        x.node.textContent = x.source.replace(x.clean, tr);
-      }
-    });
-  });
 }
 
 let CC_TRANSLATION_RUN = 0;
@@ -1638,10 +1516,8 @@ async function applyLanguageToDom(lang) {
     }
   };
 
-  // الجولة الأولى (pending مرتب: الظاهر أولاً)
   await translateUnique([...groups.keys()], lang, alive, applyToGroup);
 
-  // جولة إعادة محاولة لما بقي عربياً
   if (alive()) {
     const leftover = [...groups.keys()].filter(src =>
       groups.get(src).some(
@@ -1686,7 +1562,6 @@ function initLanguageSwitcher() {
    OPEN ARTICLE
 ========================================================= */
 let CC_OPEN_ARTICLE_REQUEST = 0;
-// silent=true: إعادة محاولة صامتة لإكمال القطع الناقصة (بدون رسالة "جارٍ الترجمة")
 async function openArticle(id, keepReaderOpen = false, silent = false) {
   createArticleReader();
   const requestId = ++CC_OPEN_ARTICLE_REQUEST;
@@ -1867,7 +1742,6 @@ async function openArticle(id, keepReaderOpen = false, silent = false) {
     history.replaceState(null, '', location.pathname + hash);
   }
 
-  // إكمال تلقائي صامت للقطع التي لم تُترجم بعد (حتى 5 مرات)
   if (lang !== 'ar' && translateWholeArticle.incomplete) {
     article.__trRetry = (article.__trRetry || 0) + 1;
     if (article.__trRetry <= 5) {
@@ -2192,15 +2066,8 @@ ccApplyView();
 window.addEventListener('hashchange', ccApplyView);
 
 /* =========================================================
-   START
+   TYPOGRAPHY SETTINGS
 ========================================================= */
-initTheme();
-main();
-/* =========================================================
-   تطبيق تنسيق الخطوط والأسطر القادم من لوحة التحكم
-   الصق هذا الكود في آخر ملف app.js (بعد آخر سطر)
-   ========================================================= */
-
 const CC_TY_FONTS = {
   'IBM Plex Sans Arabic': "'IBM Plex Sans Arabic',sans-serif",
   'Noto Naskh Arabic': "'Noto Naskh Arabic',serif",
@@ -2226,9 +2093,7 @@ function ccTyNum(value, min, max) {
 }
 
 function ccApplyTypography(settings) {
-
   const t = settings && settings.typography;
-
   if (!t || typeof t !== 'object') {
     return;
   }
@@ -2263,7 +2128,6 @@ function ccApplyTypography(settings) {
   ];
 
   blocks.forEach(([selector, size, line, align]) => {
-
     const d = ccTyNum(size && size.d, 10, 120);
     const m = ccTyNum(size && size.m, 10, 120);
     const l = ccTyNum(line, 1, 3.5);
@@ -2284,7 +2148,6 @@ function ccApplyTypography(settings) {
     if (m) {
       mobile.push(selector + '{font-size:' + m + 'px}');
     }
-
   });
 
   if (t.keepBreaks !== false) {
@@ -2299,20 +2162,22 @@ function ccApplyTypography(settings) {
   }
 
   let style = document.getElementById('ccTypographyStyle');
-
   if (!style) {
     style = document.createElement('style');
     style.id = 'ccTypographyStyle';
     document.head.appendChild(style);
   }
-
   style.textContent = rules.join('\n');
-
 }
 
 const __ccOrigApplySiteSettings = applySiteSettings;
-
 applySiteSettings = function (settings) {
   __ccOrigApplySiteSettings(settings);
   ccApplyTypography(settings);
 };
+
+/* =========================================================
+   START
+========================================================= */
+initTheme();
+main();
