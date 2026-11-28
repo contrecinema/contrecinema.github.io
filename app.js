@@ -484,6 +484,7 @@ function addArticleReaderStyles() {
     .cc-article-body .cc-h{display:block;margin:38px 0 14px;font-size:24px;font-weight:800;color:var(--reader-ink)}
     .cc-article-body .cc-quote{display:block;margin:24px 0;padding:14px 22px;border-inline-start:4px solid var(--red);background:var(--surface-2);font-size:.95em;color:var(--reader-muted)}
     .cc-article-image{width:100%;margin:44px 0}
+    .cc-caption{display:block;margin:10px auto 0;max-width:34em;font-size:13px;line-height:1.7;text-align:center;color:var(--reader-muted)}
     .cc-article-date{display:flex;justify-content:space-between;gap:12px;margin-top:35px;padding-top:20px;border-top:1px solid var(--reader-line);font-size:14px;color:var(--reader-muted)}
     .cc-no-content{padding:40px 0;color:var(--reader-muted)}
     .cc-share{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:30px;padding-top:26px;border-top:1px solid var(--reader-line)}
@@ -550,6 +551,96 @@ function articleImage(url, alt = '') {
       <img src="${esc(safe)}" alt="${esc(alt)}" loading="lazy">
     </figure>
   `;
+}
+
+/* =========================================================
+   ARTICLE GALLERY (حتى 10 صور مع تعريف اختياري)
+========================================================= */
+
+/* هل للمقال قائمة صور جديدة؟ المقالات القديمة تبقى على الطريقة القديمة */
+function ccHasGallery(article) {
+  return !!(
+    article &&
+    Array.isArray(article.images) &&
+    article.images.some(x => x && safeUrl(x.url))
+  );
+}
+
+function ccArticleImgList(article) {
+  if (!ccHasGallery(article)) return [];
+  return article.images
+    .filter(x => x && safeUrl(x.url))
+    .map(x => ({ url: x.url, caption: x.caption || '' }));
+}
+
+/* صورة واحدة، والتعريف لا يظهر إلا إذا كُتب */
+function ccFigure(img, alt) {
+  const cap = String(img.caption || '').trim();
+  return `
+    <figure class="cc-article-image">
+      <img src="${esc(safeUrl(img.url))}"
+           alt="${esc(cap || alt)}"
+           loading="lazy">
+      ${
+        cap
+          ? `<figcaption class="cc-caption">${esc(cap)}</figcaption>`
+          : ''
+      }
+    </figure>
+  `;
+}
+
+/* متن المقال: الصورة الأولى تحت العنوان، والبقية بين الفقرات */
+function ccBuildBody(article, paragraphs, title, lang) {
+  const imgs = ccArticleImgList(article);
+  const hero = imgs.shift();
+  const total = paragraphs.length;
+  const slots = {};
+
+  imgs.forEach((img, k) => {
+    let at = total
+      ? Math.round(((k + 1) * total) / (imgs.length + 1)) - 1
+      : 0;
+    at = Math.min(Math.max(at, 0), Math.max(total - 1, 0));
+    (slots[at] = slots[at] || []).push(img);
+  });
+
+  const font = article.font_family
+    ? `style="font-family:'${esc(article.font_family)}','IBM Plex Sans Arabic',sans-serif"`
+    : '';
+
+  let html = hero ? ccFigure(hero, title) : '';
+
+  if (!total) {
+    html += `
+      <div class="cc-no-content">
+        ${
+          lang === 'ar'
+            ? 'لا يوجد نص لهذا المقال بعد.'
+            : lang === 'fr'
+              ? 'Aucun texte disponible pour cet article.'
+              : 'No article text is available.'
+        }
+      </div>
+    `;
+    imgs.forEach(img => {
+      html += ccFigure(img, title);
+    });
+    return html;
+  }
+
+  paragraphs.forEach((paragraph, i) => {
+    html += `
+      <p class="cc-p" ${font}>
+        ${formatArticleText(paragraph)}
+      </p>
+    `;
+    (slots[i] || []).forEach(img => {
+      html += ccFigure(img, title);
+    });
+  });
+
+  return html;
 }
 
 /* =========================================================
@@ -1642,9 +1733,13 @@ async function openArticle(id, keepReaderOpen = false, silent = false) {
 
   const paragraphs = articleParagraphs(articleContent);
   const authorImage = safeUrl(article.author_image);
-  const image1 = safeUrl(article.image_1);
-  const image2 = safeUrl(article.image_2);
-  const image3 = safeUrl(article.image_3);
+
+  /* المقال الذي يملك قائمة صور جديدة (images) يُعرض بالمعرض الجديد؛
+     أما القديم فيبقى على الصور الثلاث كما كان */
+  const useGallery = ccHasGallery(article);
+  const image1 = useGallery ? '' : safeUrl(article.image_1);
+  const image2 = useGallery ? '' : safeUrl(article.image_2);
+  const image3 = useGallery ? '' : safeUrl(article.image_3);
   const total = paragraphs.length;
   let middleIndex = Math.ceil(total / 2);
   if (total <= 2) middleIndex = 1;
@@ -1681,6 +1776,9 @@ async function openArticle(id, keepReaderOpen = false, silent = false) {
       ${image2 ? articleImage(image2, translatedTitle) : ''}
       ${image3 ? articleImage(image3, translatedTitle) : ''}
     `;
+  }
+  if (useGallery) {
+    body = ccBuildBody(article, paragraphs, translatedTitle, lang);
   }
   const rawAuthor = String(article.author || '').trim();
   const displayAuthor = rawAuthor
