@@ -3604,3 +3604,378 @@ upload = async function (bucket, file) {
 
   throw new Error('تعذر رفع الملف إلى GitHub: ' + lastError);
 };
+/* =========================================================
+   معرض صور المقال: حتى 10 صور مع تعريف اختياري لكل صورة
+   الصق هذا الكود في آخر ملف admin.js (بعد آخر سطر)
+   ========================================================= */
+
+const CC_MAX_IMGS = 10;
+let CC_IMGS = [];
+
+/* ---- تهيئة القائمة: من الحقل الجديد، أو من الصور القديمة الثلاث ---- */
+function ccInitImgs(editing) {
+
+  if (!editing) {
+    return [];
+  }
+
+  if (Array.isArray(editing.images) && editing.images.length) {
+    return editing.images.map(x => ({
+      url: (x && x.url) || '',
+      caption: (x && x.caption) || '',
+      file: null,
+      preview: ''
+    }));
+  }
+
+  return [editing.image_1, editing.image_2, editing.image_3]
+    .filter(Boolean)
+    .map(u => ({ url: u, caption: '', file: null, preview: '' }));
+
+}
+
+/* ---- واجهة المعرض ---- */
+function ccGalleryHTML() {
+
+  const items = CC_IMGS.map((it, i) => {
+
+    const src = it.preview || it.url;
+
+    return `
+      <div style="border:1px solid #d8d2ca;padding:10px;margin:0 0 12px">
+
+        <b>
+          صورة ${i + 1}
+          ${i === 0 ? '(تظهر تحت العنوان)' : ''}
+        </b>
+
+        ${
+          src
+            ? `<img src="${esc(src)}" alt=""
+                 style="display:block;max-width:100%;max-height:160px;margin:8px 0">`
+            : ''
+        }
+
+        <input
+          type="file"
+          accept="image/*"
+          onchange="ccImgFile(${i}, this)"
+        >
+
+        <input
+          type="text"
+          value="${esc(it.caption)}"
+          placeholder="تعريف الصورة (اختياري)"
+          oninput="ccImgCaption(${i}, this.value)"
+        >
+
+        <div class="item-actions" style="margin-top:8px">
+          <button type="button" onclick="ccImgMove(${i}, -1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button type="button" onclick="ccImgMove(${i}, 1)" ${i === CC_IMGS.length - 1 ? 'disabled' : ''}>▼</button>
+          <button type="button" class="danger" onclick="ccImgDel(${i})">حذف الصورة</button>
+        </div>
+
+      </div>
+    `;
+
+  }).join('');
+
+  return items + `
+    <button
+      type="button"
+      class="btn"
+      onclick="ccImgAdd()"
+      ${CC_IMGS.length >= CC_MAX_IMGS ? 'disabled' : ''}>
+      ＋ إضافة صورة (${CC_IMGS.length}/${CC_MAX_IMGS})
+    </button>
+  `;
+
+}
+
+function ccRefreshGallery() {
+
+  const box = $('ccGallery');
+
+  if (box) {
+    box.innerHTML = ccGalleryHTML();
+  }
+
+}
+
+function ccImgAdd() {
+
+  if (CC_IMGS.length >= CC_MAX_IMGS) {
+    return;
+  }
+
+  CC_IMGS.push({ url: '', caption: '', file: null, preview: '' });
+
+  ccRefreshGallery();
+
+}
+
+function ccImgDel(i) {
+
+  const it = CC_IMGS[i];
+
+  if (!it) {
+    return;
+  }
+
+  if (it.preview) {
+    URL.revokeObjectURL(it.preview);
+  }
+
+  CC_IMGS.splice(i, 1);
+
+  ccRefreshGallery();
+
+}
+
+function ccImgMove(i, dir) {
+
+  const j = i + dir;
+
+  if (j < 0 || j >= CC_IMGS.length) {
+    return;
+  }
+
+  const tmp = CC_IMGS[i];
+
+  CC_IMGS[i] = CC_IMGS[j];
+  CC_IMGS[j] = tmp;
+
+  ccRefreshGallery();
+
+}
+
+function ccImgCaption(i, value) {
+
+  if (CC_IMGS[i]) {
+    CC_IMGS[i].caption = value;
+  }
+
+}
+
+function ccImgFile(i, inputEl) {
+
+  const f = inputEl.files && inputEl.files[0];
+
+  if (!f || !CC_IMGS[i]) {
+    return;
+  }
+
+  if (CC_IMGS[i].preview) {
+    URL.revokeObjectURL(CC_IMGS[i].preview);
+  }
+
+  CC_IMGS[i].file = f;
+  CC_IMGS[i].preview = URL.createObjectURL(f);
+
+  ccRefreshGallery();
+
+}
+
+/* ---- استبدال حقول الصور الثلاث بالمعرض داخل نموذج المقال ---- */
+const __ccOrigArticlesUI = articlesUI;
+
+articlesUI = function () {
+
+  CC_IMGS = ccInitImgs(D.editArticle || null);
+
+  let html = __ccOrigArticlesUI();
+
+  const block = title =>
+    new RegExp(
+      '<label class="upload-field">\\s*<span>' +
+      title +
+      '</span>[\\s\\S]*?</label>'
+    );
+
+  html = html.replace(
+    block('الصورة الأولى للمقال'),
+    '<div class="fmt-head">صور المقال (حتى 10)</div>' +
+    '<small>الصورة الأولى تظهر تحت العنوان، والبقية تتوزع بين الفقرات.</small>' +
+    '<div id="ccGallery">' + ccGalleryHTML() + '</div>'
+  );
+
+  html = html
+    .replace(block('الصورة الثانية للمقال'), '')
+    .replace(block('الصورة الثالثة للمقال'), '');
+
+  return html;
+
+};
+
+/* ---- حفظ المقال مع المعرض ---- */
+async function ccSaveArticle(isEdit) {
+
+  const btn = $('saveArticleBtn');
+  const editing = isEdit ? D.editArticle : null;
+
+  if (isEdit && !editing) {
+    return;
+  }
+
+  const btnLabel = btn ? btn.textContent : '';
+
+  try {
+
+    const title = $('atitle')?.value?.trim();
+    const author = $('aauthor')?.value?.trim();
+    const category = $('acat')?.value?.trim() || 'رؤى سينمائية';
+    const content = $('acontent')?.value?.trim();
+
+    if (!title) {
+      alert('أدخل عنوان المقال.');
+      return;
+    }
+
+    if (!content) {
+      alert('أدخل نص المقال.');
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'جارٍ رفع الصور وحفظ المقال...';
+    }
+
+    const slugInput = $('aslug')?.value?.trim() || '';
+
+    const slug =
+      slugifyTitle(slugInput || title) ||
+      `article-${Date.now()}`;
+
+    if (editing && slug !== editing.slug) {
+
+      const { data: dup } = await db
+        .from('articles')
+        .select('id')
+        .eq('slug', slug)
+        .neq('id', editing.id)
+        .maybeSingle();
+
+      if (dup) {
+        throw new Error('هذا الرابط الثابت مستخدم في مقال آخر.');
+      }
+
+    }
+
+    /* رفع الصور واحدة بعد الأخرى (حتى لا تتعارض عمليات GitHub) */
+    const images = [];
+
+    for (const it of CC_IMGS) {
+
+      let url = it.url || '';
+
+      if (it.file) {
+        url = await upload('covers', it.file);
+      }
+
+      if (url) {
+        images.push({
+          url: url,
+          caption: String(it.caption || '').trim()
+        });
+      }
+
+    }
+
+    const authorImage = await upload(
+      'covers',
+      $('authorImage')?.files?.[0] || null
+    );
+
+    const row = {
+      title,
+      slug,
+      author,
+      category,
+      content,
+      visible: $('avisible')?.checked === true,
+      font_family: $('afont')?.value || null,
+      images: images,
+      image_1: images[0] ? images[0].url : null,
+      image_2: images[1] ? images[1].url : null,
+      image_3: images[2] ? images[2].url : null
+    };
+
+    if (editing) {
+
+      if (authorImage) {
+        row.author_image = authorImage;
+      }
+
+      const { error } = await db
+        .from('articles')
+        .update(row)
+        .eq('id', editing.id);
+
+      if (error) {
+        throw error;
+      }
+
+      D.editArticle = null;
+
+    } else {
+
+      const nextOrder = D.articles.length
+        ? Math.max(...D.articles.map(x => x.sort_order || 0)) + 1
+        : 0;
+
+      const { error } = await db
+        .from('articles')
+        .insert({
+          ...row,
+          author_image: authorImage,
+          sort_order: nextOrder
+        });
+
+      if (error) {
+        throw error;
+      }
+
+    }
+
+    alert('تم حفظ المقال بنجاح.');
+
+    await load();
+    show('articles');
+
+  } catch (error) {
+
+    console.error('ARTICLE SAVE ERROR:', error);
+
+    alert(
+      'تعذر حفظ المقال:\n\n' +
+      msgError(error)
+    );
+
+  } finally {
+
+    const b = $('saveArticleBtn');
+
+    if (b && b === btn) {
+      b.disabled = false;
+      b.textContent = btnLabel;
+    }
+
+  }
+
+}
+
+const __ccOrigAddArticle = addArticle;
+const __ccOrigUpdateArticle = updateArticle;
+
+addArticle = function () {
+  return $('ccGallery')
+    ? ccSaveArticle(false)
+    : __ccOrigAddArticle();
+};
+
+updateArticle = function () {
+  return $('ccGallery')
+    ? ccSaveArticle(true)
+    : __ccOrigUpdateArticle();
+};
