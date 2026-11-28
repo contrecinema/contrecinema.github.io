@@ -3486,3 +3486,121 @@ show = function (tab) {
   }
 
 };
+/* =========================================================
+   رفع الصور وملفات PDF إلى GitHub بدل Supabase Storage
+   ========================================================= */
+
+const CC_GH_REPO = 'contrecinema/contrecinema.github.io';
+const CC_GH_BRANCH = 'main';
+const CC_SITE_URL = 'https://contrecinema.com';
+const CC_GH_KEY = 'cc_gh_token';
+
+function ccGhToken(forcePrompt) {
+  let token = '';
+  try {
+    token = localStorage.getItem(CC_GH_KEY) || '';
+  } catch (e) {}
+  if (token && !forcePrompt) return token;
+  token = (
+    prompt('الصق مفتاح GitHub (يُحفظ في هذا المتصفح فقط):') || ''
+  ).trim();
+  if (!token) throw new Error('لم يتم إدخال مفتاح GitHub.');
+  if (!/^(ghp_|github_pat_)/.test(token)) {
+    throw new Error('المفتاح غير صحيح، يجب أن يبدأ بـ ghp_');
+  }
+  try {
+    localStorage.setItem(CC_GH_KEY, token);
+  } catch (e) {}
+  return token;
+}
+
+function ccToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(new Error('تعذر قراءة الملف.'));
+    r.readAsDataURL(blob);
+  });
+}
+
+async function ccCompressImage(file) {
+  if (
+    !/^image\/(jpeg|png|webp)$/.test(file.type) ||
+    file.size < 800 * 1024
+  ) {
+    return file;
+  }
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise(res =>
+      canvas.toBlob(res, 'image/jpeg', 0.85)
+    );
+    if (!blob || blob.size >= file.size) return file;
+    return new File(
+      [blob],
+      file.name.replace(/\.[^.]+$/, '') + '.jpg',
+      { type: 'image/jpeg' }
+    );
+  } catch (e) {
+    return file;
+  }
+}
+
+upload = async function (bucket, file) {
+  if (!file) return null;
+
+  const f = bucket === 'covers' ? await ccCompressImage(file) : file;
+  const safeName = f.name.replace(/[^\w.\-]/g, '_');
+  const name =
+    Date.now() + '-' +
+    Math.random().toString(36).substring(2, 8) + '-' +
+    safeName;
+  const path = 'media/' + bucket + '/' + name;
+  const content = await ccToBase64(f);
+
+  let lastError = 'خطأ غير معروف';
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const token = ccGhToken(attempt > 0);
+    const res = await fetch(
+      'https://api.github.com/repos/' + CC_GH_REPO + '/contents/' + path,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'media: ' + name,
+          content: content,
+          branch: CC_GH_BRANCH
+        })
+      }
+    );
+    if (res.ok) return CC_SITE_URL + '/' + path;
+
+    const data = await res.json().catch(() => ({}));
+    lastError = res.status + ' ' + (data.message || '');
+
+    if (res.status === 401) {
+      try {
+        localStorage.removeItem(CC_GH_KEY);
+      } catch (e) {}
+      continue;
+    }
+    break;
+  }
+
+  throw new Error('تعذر رفع الملف إلى GitHub: ' + lastError);
+};
